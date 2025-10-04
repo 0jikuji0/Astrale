@@ -19,13 +19,18 @@
   label { display:block; margin:6px 0 2px; font-size:14px; }
   input { width:120px; }
   button { margin-top:8px; padding:6px 12px; font-size:14px; }
+  .label {
+    font-size: 14px;
+    color: white;
+    background: rgba(0,0,0,0.6);
+    padding: 2px 6px;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
 </style>
 </head>
 <body>
 <div id="ui">
-  <button id="generalBtn">Vue générale</button>
-  <button id="povBtn">Vue POV</button>
-  <br>
   <label for="sizeRange">Taille astéroïde</label>
   <input type="range" id="sizeRange" min="0.2" max="2" step="0.1" value="0.5">
   <label for="speedRange">Vitesse</label>
@@ -36,10 +41,10 @@
 <canvas id="canvas"></canvas>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS2DRenderer.js"></script>
+
 <script>
 let scene, camera, renderer, asteroid, earth;
-let cameraMode = 'pov';
 let t = 0;
 let vitesse = 0.002;
 let asteroidScale = 0.5;
@@ -47,19 +52,26 @@ let asteroidScale = 0.5;
 // --- Scene & Renderer ---
 scene = new THREE.Scene();
 scene.background = new THREE.Color(0x000000);
-camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 5000);
+camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 20000);
 camera.position.set(0, 5, 10);
 renderer = new THREE.WebGLRenderer({canvas: document.getElementById('canvas'), antialias:true});
 renderer.setSize(window.innerWidth, window.innerHeight);
 
+// --- Label Renderer ---
+const labelRenderer = new THREE.CSS2DRenderer();
+labelRenderer.setSize(window.innerWidth, window.innerHeight);
+labelRenderer.domElement.style.position = 'absolute';
+labelRenderer.domElement.style.top = '0px';
+document.body.appendChild(labelRenderer.domElement);
+
 // --- Lumières ---
 scene.add(new THREE.AmbientLight(0xffffff, 0.4));
-const light = new THREE.PointLight(0xffffff, 2, 2000);
+const light = new THREE.PointLight(0xffffff, 2, 5000);
 light.position.set(20,20,20);
 scene.add(light);
 
 // --- Terre ---
-const earthGeo = new THREE.SphereGeometry(20, 640, 640);
+const earthGeo = new THREE.SphereGeometry(20, 128, 128);
 const earthTex = new THREE.TextureLoader().load(
   'https://unpkg.com/three-globe@2.24.4/example/img/earth-blue-marble.jpg'
 );
@@ -68,8 +80,18 @@ earth = new THREE.Mesh(earthGeo, earthMat);
 earth.position.set(0, -2, -10);
 scene.add(earth);
 
-// --- Astéroïde avec TES textures ---
-const geom = new THREE.SphereGeometry(1, 200, 64);
+// Rotation aléatoire initiale et vitesse de rotation
+earth.rotation.x = Math.random() * Math.PI * 2;
+earth.rotation.y = Math.random() * Math.PI * 2;
+earth.rotation.z = Math.random() * Math.PI * 2;
+earth.r = {
+  x: (Math.random() * 0.001) + 0.0002,
+  y: (Math.random() * 0.001) + 0.0002,
+  z: (Math.random() * 0.001) + 0.0002
+};
+
+// --- Astéroïde ---
+const geom = new THREE.SphereGeometry(1, 128, 64);
 const loader = new THREE.TextureLoader();
 const meteorMaterial = new THREE.MeshStandardMaterial({
     map: loader.load('textures/Rock030_1K-JPG_Color.jpg'),
@@ -87,14 +109,16 @@ asteroid.scale.set(asteroidScale, asteroidScale, asteroidScale);
 asteroid.r = {x:0.002, y:0.004, z:0.003};
 scene.add(asteroid);
 
-// --- Controls (pour la vue générale) ---
-let controls = new THREE.OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
-controls.dampingFactor = 0.05;
-controls.enablePan = false;
-controls.target.copy(earth.position); // centré sur la Terre
-controls.update();
+const earthRadius = earthGeo.parameters.radius;
+let asteroidRadius = asteroidScale;
 
+// --- Label texte de l'astéroïde ---
+const asteroidDiv = document.createElement('div');
+asteroidDiv.className = 'label';
+asteroidDiv.textContent = "Astéroïde";
+const asteroidLabel = new THREE.CSS2DObject(asteroidDiv);
+asteroid.add(asteroidLabel);
+asteroidLabel.position.set(0, 3, 0);
 
 // --- Trajectoire ---
 const startPos = new THREE.Vector3(200,50,600);
@@ -112,8 +136,8 @@ scene.add(trajectoryLine);
 // --- Etoiles ---
 const starsGeom = new THREE.BufferGeometry();
 const starsVerts = [];
-const starDistance = 5000; // <-- beaucoup plus grand qu'avant
-for(let i=0;i<20000;i++){ // tu peux aussi augmenter la quantité
+const starDistance = 8000;
+for(let i=0;i<20000;i++){
   starsVerts.push(
     (Math.random()-0.5)*starDistance,
     (Math.random()-0.5)*starDistance,
@@ -123,15 +147,11 @@ for(let i=0;i<20000;i++){ // tu peux aussi augmenter la quantité
 starsGeom.setAttribute('position', new THREE.Float32BufferAttribute(starsVerts, 3));
 scene.add(new THREE.Points(starsGeom, new THREE.PointsMaterial({color:0xffffff, size:0.5})));
 
-// --- Caméras ---
-const cameraOffset = new THREE.Vector3(5,2,10);
-document.getElementById('generalBtn').addEventListener('click', ()=>{ cameraMode='general'; });
-document.getElementById('povBtn').addEventListener('click', ()=>{ cameraMode='pov'; });
-
 // --- UI sliders ---
 document.getElementById('sizeRange').addEventListener('input', e=>{
   asteroidScale = parseFloat(e.target.value);
   asteroid.scale.set(asteroidScale, asteroidScale, asteroidScale);
+  asteroidRadius = asteroidScale;
 });
 document.getElementById('speedRange').addEventListener('input', e=>{
   vitesse = parseFloat(e.target.value);
@@ -143,16 +163,24 @@ document.getElementById('rewindBtn').addEventListener('click', ()=>{
 });
 
 // --- Animation ---
+const cameraOffset = new THREE.Vector3(5,2,10);
+
+asteroid.position.copy(startPos);
+
 function animate(){
   requestAnimationFrame(animate);
 
-  // Déplacement astéroïde
-  if(t < 1){
-    t += vitesse;
-    asteroid.position.lerpVectors(startPos,endPos,t);
+  // Calcul de la distance à la Terre
+  const toEarth = new THREE.Vector3().subVectors(endPos, asteroid.position);
+  const distance = toEarth.length();
+
+  // Si pas encore collision, avancer
+  if(distance > earthRadius + asteroidRadius){
+    const step = toEarth.clone().normalize().multiplyScalar(vitesse*1000); // ajuster vitesse
+    asteroid.position.add(step);
   } else {
-    // Impact visuel simple
-    earth.material.color.set(0xff0000);
+    // Collision détectée
+    earth.material.color.set(0xff0000); // effet visuel
   }
 
   // Rotation astéroïde
@@ -161,22 +189,20 @@ function animate(){
   asteroid.rotation.z += asteroid.r.z;
 
   // Rotation Terre
-  earth.rotation.y += 0.0005;
+  earth.rotation.x += earth.r.x;
+  earth.rotation.y += earth.r.y;
+  earth.rotation.z += earth.r.z;
 
-if(cameraMode==='general'){
-    controls.enabled = true;
-    controls.target.copy(earth.position); // reste centré sur la Terre
-    controls.update();
-} else if(cameraMode==='pov'){
-    controls.enabled = false; // désactiver OrbitControls en POV
-    camera.position.copy(asteroid.position).add(cameraOffset);
-    camera.lookAt(asteroid.position);
-}
-
+  // POV camera
+  camera.position.copy(asteroid.position).add(cameraOffset);
+  camera.lookAt(asteroid.position);
 
   renderer.render(scene,camera);
+  labelRenderer.render(scene,camera);
 }
+
 animate();
 </script>
+
 </body>
 </html>

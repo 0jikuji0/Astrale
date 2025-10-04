@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terre + Astéroïde - Three.js</title>
+  <style>
+    body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; }
+    #canvas { width: 100%; height: 100vh; display: block; }
+    #loading {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      color: white; font-size: 24px;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 20px; border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <div id="loading">Chargement de la scène 3D...</div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    let scene, camera, renderer, earth, asteroid;
+    let mouseX = 0, mouseY = 0;
+    let targetRotationX = 0, targetRotationY = 0;
+    let isDragging = false;
+
+    // Classe Asteroid
+    class Asteroid {
+      constructor(options = {}) {
+        this.radius = options.radius || 1;
+        this.color = options.color || 0x888888;
+        this.position = options.position || new THREE.Vector3(0, 0, 0);
+
+        const loader = new THREE.TextureLoader();
+        const texture = loader.load("http://codelab.nfshost.com/asteroids_super_3d/assets/asteroid.jpeg");
+        texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+        texture.anisotropy = 16;
+
+        const geometry = new THREE.SphereGeometry(this.radius, 32, 16);
+
+        // Déformer légèrement les sommets
+        const pos = geometry.attributes.position;
+        const vertex = new THREE.Vector3();
+        for (let i = 0; i < pos.count; i++) {
+          vertex.fromBufferAttribute(pos, i);
+          vertex.x += (Math.random() - 0.5) * this.radius * 0.3;
+          vertex.y += (Math.random() - 0.5) * this.radius * 0.3;
+          vertex.z += (Math.random() - 0.5) * this.radius * 0.3;
+          pos.setXYZ(i, vertex.x, vertex.y, vertex.z);
+        }
+        pos.needsUpdate = true;
+
+        const material = new THREE.MeshPhongMaterial({
+          map: texture,
+          bumpMap: texture,
+          bumpScale: 0.5,
+          color: this.color,
+          specular: 0x333333,
+          shininess: 0,
+          flatShading: true
+        });
+
+        this.mesh = new THREE.Mesh(geometry, material);
+        this.mesh.position.copy(this.position);
+
+        this.rotationSpeed = {
+          x: 0.002 + Math.random() * 0.003,
+          y: 0.004 + Math.random() * 0.003,
+          z: 0.003 + Math.random() * 0.003
+        };
+      }
+
+      addToScene(scene) { scene.add(this.mesh); }
+
+      update() {
+        this.mesh.rotation.x += this.rotationSpeed.x;
+        this.mesh.rotation.y += this.rotationSpeed.y;
+        this.mesh.rotation.z += this.rotationSpeed.z;
+      }
+    }
+
+    function init() {
+      // Scène
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x000000);
+
+      // Caméra plongée
+      camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 5000);
+      camera.position.set(0, 2, 6); // un peu au-dessus et en arrière
+      camera.lookAt(0, 0, 0);
+
+      // Renderer
+      const canvas = document.getElementById('canvas');
+      renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.shadowMap.enabled = true;
+
+      // Lumières
+      scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+      const light1 = new THREE.PointLight(0xff7f24, 2, 2000);
+      light1.position.set(20, 20, 20);
+      scene.add(light1);
+      const light2 = new THREE.PointLight(0x6495ed, 2, 2000);
+      light2.position.set(-20, -10, -20);
+      scene.add(light2);
+
+      // Terre
+      const geoEarth = new THREE.SphereGeometry(1, 64, 64);
+      const texLoader = new THREE.TextureLoader();
+      const earthTex = texLoader.load('https://unpkg.com/three-globe@2.24.4/example/img/earth-blue-marble.jpg');
+      const matEarth = new THREE.MeshPhongMaterial({ map: earthTex, shininess: 10 });
+      earth = new THREE.Mesh(geoEarth, matEarth);
+      scene.add(earth);
+      earth.rotation.y = -Math.PI/2;
+
+      // Astéroïde
+      asteroid = new Asteroid({ radius: 0.5, position: new THREE.Vector3(0, 0, 0) });
+      asteroid.addToScene(scene);
+
+      // Etoiles
+      addStars();
+
+      // Events
+      window.addEventListener('resize', onWindowResize);
+      canvas.addEventListener('mousedown', onMouseDown);
+      canvas.addEventListener('mousemove', onMouseMove);
+      canvas.addEventListener('mouseup', onMouseUp);
+      canvas.addEventListener('wheel', onWheel);
+
+      document.getElementById('loading').style.display = 'none';
+
+      animate();
+    }
+
+    function addStars() {
+      const starsGeo = new THREE.BufferGeometry();
+      const starsMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.01 });
+      const vertices = [];
+      for (let i = 0; i < 10000; i++) {
+        vertices.push((Math.random() - 0.5) * 2000, (Math.random() - 0.5) * 2000, (Math.random() - 0.5) * 2000);
+      }
+      starsGeo.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+      const stars = new THREE.Points(starsGeo, starsMat);
+      scene.add(stars);
+    }
+
+    function onMouseDown(e){ isDragging = true; mouseX = e.clientX; mouseY = e.clientY; }
+    function onMouseMove(e){
+      if(isDragging){
+        const deltaX = e.clientX - mouseX;
+        const deltaY = e.clientY - mouseY;
+        targetRotationY += deltaX * 0.005;
+        targetRotationX += deltaY * 0.005;
+        targetRotationX = Math.max(-Math.PI/2, Math.min(Math.PI/2, targetRotationX));
+        mouseX = e.clientX;
+        mouseY = e.clientY;
+      }
+    }
+    function onMouseUp(){ isDragging = false; }
+    function onWheel(e){ e.preventDefault(); camera.position.z += e.deltaY*0.001; camera.position.z = Math.max(2, Math.min(20, camera.position.z)); }
+    function onWindowResize(){ camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      // Rotation Terre
+      if(earth){
+        earth.rotation.y += (targetRotationY - earth.rotation.y)*0.05;
+        earth.rotation.x += (targetRotationX - earth.rotation.x)*0.05;
+        if(!isDragging) earth.rotation.y += 0.001;
+      }
+
+      // Astéroïde
+      asteroid.update();
+
+      renderer.render(scene, camera);
+    }
+
+    init();
+  </script>
+</body>
+</html>
