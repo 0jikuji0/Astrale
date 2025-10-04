@@ -2,58 +2,64 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Astéroïde texturé avec Terre en fond</title>
+<title>Astéroïde avec Terre et trajectoire</title>
 <style>
-  body { margin:0; overflow:hidden; }
+  body { margin:0; overflow:hidden; font-family:sans-serif; }
   canvas { display:block; }
   #ui {
     position: absolute;
     top: 10px;
     left: 10px;
     z-index: 10;
+    background: rgba(0,0,0,0.4);
+    padding: 8px;
+    border-radius: 8px;
+    color:white;
   }
-  button {
-    margin: 2px;
-    padding: 6px 12px;
-    font-size: 14px;
-  }
+  label { display:block; margin:6px 0 2px; font-size:14px; }
+  input { width:120px; }
+  button { margin-top:8px; padding:6px 12px; font-size:14px; }
 </style>
 </head>
 <body>
 <div id="ui">
-  <button id="generalBtn">General</button>
-  <button id="povBtn">POV</button>
+  <button id="generalBtn">Vue générale</button>
+  <button id="povBtn">Vue POV</button>
+  <br>
+  <label for="sizeRange">Taille astéroïde</label>
+  <input type="range" id="sizeRange" min="0.2" max="2" step="0.1" value="0.5">
+  <label for="speedRange">Vitesse</label>
+  <input type="range" id="speedRange" min="0.0005" max="0.01" step="0.0005" value="0.002">
+  <br>
+  <button id="rewindBtn">Rejouer</button>
 </div>
 <canvas id="canvas"></canvas>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <script>
 let scene, camera, renderer, asteroid, earth;
-let mouseX = 0, mouseY = 0;
-let targetRotX = 0, targetRotY = 0;
-let isDragging = false;
-let cameraMode = 'general'; // 'general' ou 'pov'
+let cameraMode = 'pov';
+let t = 0;
+let vitesse = 0.002;
+let asteroidScale = 0.5;
 
 // --- Scene & Renderer ---
 scene = new THREE.Scene();
 scene.background = new THREE.Color(0x000000);
 camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 5000);
 camera.position.set(0, 5, 10);
-camera.lookAt(0,0,0);
-
 renderer = new THREE.WebGLRenderer({canvas: document.getElementById('canvas'), antialias:true});
 renderer.setSize(window.innerWidth, window.innerHeight);
 
 // --- Lumières ---
 scene.add(new THREE.AmbientLight(0xffffff, 0.4));
-const light1 = new THREE.PointLight(0xff7f24, 2, 2000);
-light1.position.set(10,10,10);
-scene.add(light1);
-const light2 = new THREE.PointLight(0x6495ed, 2, 2000);
-light2.position.set(-10,-5,-10);
-scene.add(light2);
+const light = new THREE.PointLight(0xffffff, 2, 2000);
+light.position.set(20,20,20);
+scene.add(light);
 
 // --- Terre ---
-const earthGeo = new THREE.SphereGeometry(2, 64, 64);
+const earthGeo = new THREE.SphereGeometry(20, 640, 640);
 const earthTex = new THREE.TextureLoader().load(
   'https://unpkg.com/three-globe@2.24.4/example/img/earth-blue-marble.jpg'
 );
@@ -62,8 +68,8 @@ earth = new THREE.Mesh(earthGeo, earthMat);
 earth.position.set(0, -2, -10);
 scene.add(earth);
 
-// --- Astéroïde ---
-const geom = new THREE.SphereGeometry(0.5, 200, 64);
+// --- Astéroïde avec TES textures ---
+const geom = new THREE.SphereGeometry(1, 200, 64);
 const loader = new THREE.TextureLoader();
 const meteorMaterial = new THREE.MeshStandardMaterial({
     map: loader.load('textures/Rock030_1K-JPG_Color.jpg'),
@@ -77,14 +83,24 @@ const meteorMaterial = new THREE.MeshStandardMaterial({
     flatShading: false
 });
 asteroid = new THREE.Mesh(geom, meteorMaterial);
+asteroid.scale.set(asteroidScale, asteroidScale, asteroidScale);
 asteroid.r = {x:0.002, y:0.004, z:0.003};
 scene.add(asteroid);
 
+// --- Controls (pour la vue générale) ---
+let controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.enablePan = false;
+controls.target.copy(earth.position); // centré sur la Terre
+controls.update();
+
+
 // --- Trajectoire ---
-const startPos = new THREE.Vector3(5,1,10);
+const startPos = new THREE.Vector3(200,50,600);
 const endPos = earth.position.clone();
-const trajectoryPoints = [];
 const steps = 100;
+const trajectoryPoints = [];
 for(let i = 0; i <= steps; i++){
   trajectoryPoints.push(new THREE.Vector3().lerpVectors(startPos, endPos, i/steps));
 }
@@ -95,78 +111,71 @@ scene.add(trajectoryLine);
 
 // --- Etoiles ---
 const starsGeom = new THREE.BufferGeometry();
-const starsMat = new THREE.PointsMaterial({color:0xffffff, size:0.01});
 const starsVerts = [];
-for(let i=0;i<5000;i++){
-  starsVerts.push((Math.random()-0.5)*200, (Math.random()-0.5)*200, (Math.random()-0.5)*200);
+const starDistance = 5000; // <-- beaucoup plus grand qu'avant
+for(let i=0;i<20000;i++){ // tu peux aussi augmenter la quantité
+  starsVerts.push(
+    (Math.random()-0.5)*starDistance,
+    (Math.random()-0.5)*starDistance,
+    (Math.random()-0.5)*starDistance
+  );
 }
 starsGeom.setAttribute('position', new THREE.Float32BufferAttribute(starsVerts, 3));
-scene.add(new THREE.Points(starsGeom, starsMat));
+scene.add(new THREE.Points(starsGeom, new THREE.PointsMaterial({color:0xffffff, size:0.5})));
 
-// --- Mouse ---
-const canvas = renderer.domElement;
-canvas.addEventListener('mousedown', e=>{ isDragging=true; mouseX=e.clientX; mouseY=e.clientY; });
-canvas.addEventListener('mousemove', e=>{
-  if(isDragging){
-    const dx = e.clientX - mouseX;
-    const dy = e.clientY - mouseY;
-    targetRotY += dx*0.005;
-    targetRotX += dy*0.005;
-    targetRotX = Math.max(-Math.PI/2, Math.min(Math.PI/2, targetRotX));
-    mouseX = e.clientX;
-    mouseY = e.clientY;
-  }
-});
-canvas.addEventListener('mouseup', ()=>{ isDragging=false; });
-canvas.addEventListener('wheel', e=>{
-  e.preventDefault();
-  camera.position.z += e.deltaY * 0.01;
-  camera.position.z = Math.max(5, Math.min(30, camera.position.z));
-});
-window.addEventListener('resize', ()=>{
-  camera.aspect = window.innerWidth/window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-});
-
-// --- Boutons POV / General ---
+// --- Caméras ---
 const cameraOffset = new THREE.Vector3(5,2,10);
 document.getElementById('generalBtn').addEventListener('click', ()=>{ cameraMode='general'; });
 document.getElementById('povBtn').addEventListener('click', ()=>{ cameraMode='pov'; });
 
+// --- UI sliders ---
+document.getElementById('sizeRange').addEventListener('input', e=>{
+  asteroidScale = parseFloat(e.target.value);
+  asteroid.scale.set(asteroidScale, asteroidScale, asteroidScale);
+});
+document.getElementById('speedRange').addEventListener('input', e=>{
+  vitesse = parseFloat(e.target.value);
+});
+document.getElementById('rewindBtn').addEventListener('click', ()=>{
+  t = 0;
+  asteroid.position.copy(startPos);
+  earth.material.color.set(0xffffff);
+});
+
 // --- Animation ---
-let t = 0;
 function animate(){
   requestAnimationFrame(animate);
 
   // Déplacement astéroïde
-  t += 0.001;
-  t = Math.min(t,1);
-  asteroid.position.lerpVectors(startPos,endPos,t);
+  if(t < 1){
+    t += vitesse;
+    asteroid.position.lerpVectors(startPos,endPos,t);
+  } else {
+    // Impact visuel simple
+    earth.material.color.set(0xff0000);
+  }
 
   // Rotation astéroïde
   asteroid.rotation.x += asteroid.r.x;
   asteroid.rotation.y += asteroid.r.y;
   asteroid.rotation.z += asteroid.r.z;
 
-  // Rotation Terre lente
+  // Rotation Terre
   earth.rotation.y += 0.0005;
 
-  // Caméra
-  if(cameraMode==='general'){
-    const radius = 10;
-    camera.position.x = radius * Math.sin(targetRotY) * Math.cos(targetRotX) + 5;
-    camera.position.y = radius * Math.sin(targetRotX) + 1;
-    camera.position.z = radius * Math.cos(targetRotY) * Math.cos(targetRotX);
-    camera.lookAt(asteroid.position);
-  } else if(cameraMode==='pov'){
+if(cameraMode==='general'){
+    controls.enabled = true;
+    controls.target.copy(earth.position); // reste centré sur la Terre
+    controls.update();
+} else if(cameraMode==='pov'){
+    controls.enabled = false; // désactiver OrbitControls en POV
     camera.position.copy(asteroid.position).add(cameraOffset);
     camera.lookAt(asteroid.position);
-  }
+}
+
 
   renderer.render(scene,camera);
 }
-
 animate();
 </script>
 </body>
