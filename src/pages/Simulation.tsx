@@ -36,7 +36,7 @@ const Simulation = () => {
     }, []);
 
     return (
-        <main className="min-h-screen bg-slate-950 text-slate-100">
+        <main className="min-h-screen bg-gradient-to-br from-[#0042A6] to-[#07173F] text-white">
             <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-8 px-6 py-10 lg:flex-row">
                 <SimulationControlPanel
                     selectedPreset={selectedPreset}

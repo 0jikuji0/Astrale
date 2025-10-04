@@ -65,15 +65,73 @@ type SimulationViewportProps = {
 };
 
 const SimulationViewport = ({ params }: SimulationViewportProps) => {
+    type PlanetDefinition = {
+        name: string;
+        texture: string;
+        position: [number, number, number];
+        scale: number;
+        rotationSpeed?: number;
+    };
+
+    const planets: ReadonlyArray<PlanetDefinition> = [
+        {
+            name: 'Mars',
+            texture: 'https://threejs.org/examples/textures/planets/mars_1024.jpg',
+            position: [-22, 4, -46],
+            scale: 1.8,
+            rotationSpeed: 0.03,
+        },
+        {
+            name: 'Jupiter',
+            texture: 'https://threejs.org/examples/textures/planets/jupiter_1024.jpg',
+            position: [48, 16, -120],
+            scale: 6.5,
+            rotationSpeed: 0.01,
+        },
+        {
+            name: 'Neptune',
+            texture: 'https://threejs.org/examples/textures/planets/neptune_1024.jpg',
+            position: [-60, -2, -160],
+            scale: 3.4,
+            rotationSpeed: 0.02,
+        },
+    ];
+
+    const Planet = ({ texture, position, scale, rotationSpeed = 0.02 }: PlanetDefinition) => {
+        const planetRef = useRef<Mesh>(null!);
+        const planetTexture = useTexture(texture);
+        planetTexture.colorSpace = SRGBColorSpace;
+
+        useFrame((_, delta) => {
+            if (!planetRef.current) return;
+            planetRef.current.rotation.y += delta * rotationSpeed;
+        });
+
+        return (
+            <mesh ref={planetRef} position={position} scale={scale} castShadow receiveShadow>
+                <sphereGeometry args={[1, 48, 48]} />
+                <meshStandardMaterial map={planetTexture} roughness={0.6} metalness={0.1} />
+            </mesh>
+        );
+    };
+
+    const PlanetField = () => (
+        <group>
+            {planets.map((planet) => (
+                <Planet key={planet.name} {...planet} />
+            ))}
+        </group>
+    );
+
     return (
-        <section className="relative flex-1 overflow-hidden rounded-3xl border border-white/10 bg-slate-900/60">
-            <div className="absolute inset-0 z-0 bg-gradient-to-br from-blue-900/20 via-transparent to-purple-900/30" aria-hidden />
-            <div className="relative z-10 h-[520px] lg:h-full">
-                <Canvas shadows camera={{ position: [10, 8, 14], fov: 45 }}>
+        <section className="relative flex-1 overflow-hidden rounded-3xl border border-[#2E96F5]/35 bg-black">
+            <div className="relative z-10 h-[60vh] lg:h-[70vh]">
+                <Canvas className="bg-black" shadows camera={{ position: [10, 8, 14], fov: 45 }}>
                     <ambientLight intensity={0.6} />
                     <directionalLight position={[15, 10, 5]} intensity={1.2} castShadow shadow-mapSize-width={2048} shadow-mapSize-height={2048} />
-                    <pointLight position={[-12, -10, -10]} intensity={0.4} color="#60a5fa" />
+                    <pointLight position={[-12, -10, -10]} intensity={0.4} color="#eafe07" />
                     <Stars radius={80} depth={60} count={8000} factor={4} fade />
+                    <PlanetField />
                     <group position={[0, -2.6, 0]}>
                         <Earth />
                         <Atmosphere />
@@ -83,28 +141,28 @@ const SimulationViewport = ({ params }: SimulationViewportProps) => {
                 </Canvas>
             </div>
 
-            <div className="absolute bottom-6 left-6 z-20 w-[min(420px,90%)] rounded-2xl border border-white/10 bg-slate-900/80 p-5 text-sm text-slate-200 backdrop-blur">
-                <h2 className="text-base font-semibold text-blue-100">Synthèse rapide</h2>
-                <p className="mt-2 text-xs text-slate-400">
+            <div className="absolute bottom-4 left-6 z-20 w-[min(420px,90%)] rounded-2xl border border-[#2E96F5]/30 bg-[#041032]/85 p-5 text-sm text-[#E6ECFF] backdrop-blur">
+                <h2 className="text-base font-semibold text-[#2E96F5]">Synthèse rapide</h2>
+                <p className="mt-2 text-xs text-[#A8B9FF]">
                     Projection de l'orbite actuelle avec visualisation temps réel de la vitesse et de l'inclinaison. Ajustez les menus pour tester
                     vos stratégies de déviation.
                 </p>
                 <div className="mt-4 grid grid-cols-2 gap-4 text-xs">
-                    <div className="rounded-xl border border-white/10 bg-slate-950/70 p-3">
-                        <p className="text-slate-400">Vitesse actuelle</p>
-                        <p className="text-lg font-semibold text-blue-200">{decimalFormatter.format(params.velocity)} km/s</p>
+                    <div className="rounded-xl border border-[#2E96F5]/25 bg-[#07173F]/70 p-3">
+                        <p className="text-[#A8B9FF]">Vitesse actuelle</p>
+                        <p className="text-lg font-semibold text-[#eafe07]">{decimalFormatter.format(params.velocity)} km/s</p>
                     </div>
-                    <div className="rounded-xl border border-white/10 bg-slate-950/70 p-3">
-                        <p className="text-slate-400">Inclinaison</p>
-                        <p className="text-lg font-semibold text-blue-200">{decimalFormatter.format(params.angle)}°</p>
+                    <div className="rounded-xl border border-[#2E96F5]/25 bg-[#07173F]/70 p-3">
+                        <p className="text-[#A8B9FF]">Inclinaison</p>
+                        <p className="text-lg font-semibold text-[#eafe07]">{decimalFormatter.format(params.angle)}°</p>
                     </div>
-                    <div className="rounded-xl border border-white/10 bg-slate-950/70 p-3">
-                        <p className="text-slate-400">Masse</p>
-                        <p className="text-lg font-semibold text-blue-200">{decimalFormatter.format(params.mass)} ×10¹² kg</p>
+                    <div className="rounded-xl border border-[#2E96F5]/25 bg-[#07173F]/70 p-3">
+                        <p className="text-[#A8B9FF]">Masse</p>
+                        <p className="text-lg font-semibold text-[#eafe07]">{decimalFormatter.format(params.mass)} ×10¹² kg</p>
                     </div>
-                    <div className="rounded-xl border border-white/10 bg-slate-950/70 p-3">
-                        <p className="text-slate-400">Rayon</p>
-                        <p className="text-lg font-semibold text-blue-200">{decimalFormatter.format(params.radius)} km</p>
+                    <div className="rounded-xl border border-[#2E96F5]/25 bg-[#07173F]/70 p-3">
+                        <p className="text-[#A8B9FF]">Rayon</p>
+                        <p className="text-lg font-semibold text-[#eafe07]">{decimalFormatter.format(params.radius)} km</p>
                     </div>
                 </div>
             </div>

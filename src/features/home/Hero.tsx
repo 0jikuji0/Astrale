@@ -1,16 +1,17 @@
-import { Link } from "react-router";
-import { Button } from "@/components/ui/button";
-import Badge from "@/components/ui/badge";
-import TextType from "@/components/ui/texttype";
+import { Link } from 'react-router';
+
+import Badge from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import TextType from '@/components/ui/texttype';
 
 const HomeHero = () => {
   return (
-    <header className="relative min-h-screen flex items-center justify-center overflow-hidden">
+    <header className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-[#0042A6] to-[#07173F] text-white">
       <div
-        className="absolute inset-0 bg-gradient-to-br from-blue-500/30 via-transparent to-purple-500/30 blur-3xl"
+        className="absolute inset-0 bg-gradient-to-br from-[#0042A6]/40 via-transparent to-[#07173F]/60 blur-3xl"
         aria-hidden
       />
-      <div className="relative flex flex-col gap-16 px-6 text-center max-w-4xl w-full">
+      <div className="relative flex w-full max-w-4xl flex-col gap-16 px-6 text-center">
         <div className="flex flex-col ">
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <div className="flex flex-col items-center gap-5">
@@ -23,10 +24,10 @@ const HomeHero = () => {
                   showCursor={true}
                   cursorCharacter="|"
                   loop={true}
-                  className="text-xs text-gray-300"
+                  className="text-xs text-[#E6ECFF]"
                 />
               </Badge>
-              <p className="text-xl font-semibold uppercase tracking-[0.3em] text-blue-300 mb-3">
+              <p className="mb-3 text-xl font-semibold uppercase tracking-[0.3em] text-[#2E96F5]">
                 Meteor Madness
               </p>
             </div>
@@ -36,7 +37,7 @@ const HomeHero = () => {
               Modélisez l&apos;impact d&apos;un astéroïde et préparez des
               stratégies de défense.
             </h1>
-            <p className="text-lg text-slate-300 md:text-xl">
+            <p className="text-lg text-[#E6ECFF] md:text-xl">
               Astrale rassemble les données de la NASA et de l&apos;USGS pour
               transformer des paramètres bruts en scénarios immersifs. Explorez
               les conséquences d&apos;une collision, testez des tactiques de
@@ -47,17 +48,21 @@ const HomeHero = () => {
               <Button
                 asChild
                 size="lg"
-                className="bg-blue-500 text-slate-50 shadow-blue-600/30 transition-all duration-300 hover:shadow-blue-300 hover:scale-[1.02] hover:bg-linear-65 hover:from-purple-600 hover:to-blue-500"
+                className="font-bold bg-[#eafe07] text-[#000000] shadow-[0_0_35px_rgba(234,254,7,0.45)] transition-all duration-300 hover:scale-[1.02] hover:bg-[#f4ff4a] uppercase"
               >
-                <Link to="/simulation">Lancer la simulation</Link>
+                <Link to="/simulation">
+                  LANCER LA SIMULATION
+                </Link>
               </Button>
               <Button
                 asChild
                 size="lg"
                 variant="ghost"
-                className="text-slate-300 transition-all duration-300 hover:scale-[1.02]"
+                className="font-bold text-[#eafe07] hover:bg-transparent transition-all duration-300 hover:scale-[1.02] hover:text-[#8E1100] uppercase"
               >
-                <a href="#presentation">Découvrir la plateforme</a>
+                <a className="underline decoration-inherit" href="#presentation">
+                  DÉCOUVRIR LA PLATEFORME
+                </a>
               </Button>
             </div>
           </div>
