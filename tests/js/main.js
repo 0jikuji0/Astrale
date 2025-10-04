@@ -8,109 +8,127 @@ let scene, camera, renderer, composer, controls;
 let planet_sun, particles, arcs = [];
 let planets = [];
 
+/* -----------------------------------------------------
+   Échelle réaliste (Neptune ~650 unités)
+------------------------------------------------------ */
+const scale = 650 / 30.069;
+
+/* -----------------------------------------------------
+   Facteur d'exagération pour inclinaisons
+------------------------------------------------------ */
+const exaggeration = 3; // ajuster pour rendre inclinaisons visibles
+
+/* -----------------------------------------------------
+   Données planètes avec excentricité et inclinaison
+------------------------------------------------------ */
 const orbitData = [
-  { name: 'Mercure', texture: '/tests/img/mercury_hd.jpg', radius: 2, orbit: 100, speed: 2, color: 0x888888 }, // gris
-  { name: 'Vénus', texture: '/tests/img/venus_hd.jpg', radius: 3, orbit: 150, speed: 1.5, color: 0xFFFF00 }, // jaune vif
-  { name: 'Terre', texture: '/tests/img/earth_hd.jpg', radius: 4, orbit: 200, speed: 1, color: 0x0000FF }, // bleu
-  { name: 'Mars', texture: '/tests/img/mars_hd.jpg', radius: 3.5, orbit: 250, speed: 0.8, color: 0xFF0000 }, // rouge
-  { name: 'Jupiter', texture: '/tests/img/jupiter_hd.jpg', radius: 10, orbit: 350, speed: 0.7, color: 0xFFA500 }, // orange
-  { name: 'Saturne', texture: '/tests/img/saturn_hd.jpg', radius: 8, orbit: 450, speed: 0.6, color: 0xFFD700 }, // doré
-  { name: 'Uranus', texture: '/tests/img/uranus_hd.jpg', radius: 6, orbit: 550, speed: 0.5, color: 0x00FFFF }, // cyan
-  { name: 'Neptune', texture: '/tests/img/neptune_hd.jpg', radius: 5, orbit: 650, speed: 0.4, color: 0x00008B }, // bleu foncé
+  { name: 'Mercure', texture: '/tests/img/mercury_hd.jpg', radius: 1.5, a: 0.387 * scale, e: 0.2056, speed: 4.15, color: 0x888888, tilt: 7.0 },
+  { name: 'Vénus',   texture: '/tests/img/venus_hd.jpg',   radius: 2.5, a: 0.723 * scale, e: 0.0068, speed: 1.62, color: 0xffff00, tilt: 3.4 },
+  { name: 'Terre',   texture: '/tests/img/earth_hd.jpg',   radius: 3,   a: 1.000 * scale, e: 0.0167, speed: 1.00, color: 0x0000ff, tilt: 0.0 },
+  { name: 'Mars',    texture: '/tests/img/mars_hd.jpg',    radius: 2,   a: 1.524 * scale, e: 0.0934, speed: 0.53, color: 0xff0000, tilt: 1.85 },
+  { name: 'Jupiter', texture: '/tests/img/jupiter_hd.jpg', radius: 8,   a: 5.203 * scale, e: 0.0484, speed: 0.08, color: 0xffa500, tilt: 1.3 },
+  { name: 'Saturne', texture: '/tests/img/saturn_hd.jpg',  radius: 7,   a: 9.537 * scale, e: 0.0541, speed: 0.03, color: 0xffd700, tilt: 2.49 },
+  { name: 'Uranus',  texture: '/tests/img/uranus_hd.jpg',  radius: 5,   a: 19.191 * scale, e: 0.0472, speed: 0.011, color: 0x00ffff, tilt: 0.77 },
+  { name: 'Neptune', texture: '/tests/img/neptune_hd.jpg', radius: 4,   a: 30.069 * scale, e: 0.0086, speed: 0.006, color: 0x00008b, tilt: 1.77 },
 ];
 
-
+/* -----------------------------------------------------
+   Initialisation
+------------------------------------------------------ */
 function init() {
   scene = new THREE.Scene();
-
   createStarsBackground();
 
-  camera = new THREE.PerspectiveCamera(85, window.innerWidth / window.innerHeight, 0.1, 30000);
-  camera.position.z = 1000;
-
-  planet_sun = loadPlanetTexture("/tests/img/sun_hd.jpg", 20, 100, 100, 'basic');
+  // 🌞 Soleil
+  planet_sun = loadPlanetTexture("/tests/img/sun_hd.jpg", 3.5, 100, 100, 'basic');
   scene.add(planet_sun);
 
   const sunLight = new THREE.PointLight(0xffffff, 2, 3000);
   sunLight.position.copy(planet_sun.position);
   scene.add(sunLight);
 
+  // 🪐 Planètes et orbites elliptiques inclinées
   orbitData.forEach((p) => {
-    // Créer la planète
     const mesh = loadPlanetTexture(p.texture, p.radius, 64, 64, 'standard');
     mesh.material.roughness = 1;
     mesh.material.metalness = 0;
     scene.add(mesh);
-    planets.push({ mesh, orbit: p.orbit, speed: p.speed });
+    planets.push({ mesh, a: p.a, e: p.e, speed: p.speed, tilt: p.tilt });
 
-    // Créer l'orbite (en ligne fine et colorée)
+    // Génération orbite elliptique
     const points = [];
+    const b = p.a * Math.sqrt(1 - p.e * p.e);
     for (let i = 0; i <= 128; i++) {
-      const angle = (i / 128) * Math.PI * 2;
-      points.push(new THREE.Vector3(Math.cos(angle) * p.orbit, 0, Math.sin(angle) * p.orbit));
+      const theta = (i / 128) * 2 * Math.PI;
+      const x = p.a * Math.cos(theta) - p.a * p.e;
+      const z = b * Math.sin(theta);
+      points.push(new THREE.Vector3(x, 0, z));
     }
     const orbitGeom = new THREE.BufferGeometry().setFromPoints(points);
-    const orbitMat = new THREE.LineBasicMaterial({
-      color: p.color,
-      transparent: true,
-      opacity: 0.6
-    });
+    const orbitMat = new THREE.LineBasicMaterial({ color: p.color, transparent: true, opacity: 0.6 });
     const orbitLine = new THREE.LineLoop(orbitGeom, orbitMat);
+
+    // Inclinaison orbitale exagérée
+    orbitLine.rotation.x = THREE.MathUtils.degToRad(p.tilt * exaggeration);
     scene.add(orbitLine);
   });
 
   createSolarParticles();
   createSolarArcs();
 
-  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+  // 🎥 Caméra
+  camera = new THREE.PerspectiveCamera(85, window.innerWidth / window.innerHeight, 1.5, 50000);
+  const jupiterOrbit = 5.203 * scale;
+  camera.position.set(jupiterOrbit * 1.1, 50, jupiterOrbit * 0.5);
+  camera.lookAt(planet_sun.position);
+
+  // 🚀 Rendu + Bloom
+  renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(renderer.domElement);
 
   const renderScene = new RenderPass(scene, camera);
-  const bloomPass = new UnrealBloomPass(
-    new THREE.Vector2(window.innerWidth, window.innerHeight),
-    0.45, // bloom un peu plus fort pour les orbites colorées
-    0.4,
-    0.85
-  );
+  const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.45, 0.4, 0.85);
   composer = new EffectComposer(renderer);
   composer.addPass(renderScene);
   composer.addPass(bloomPass);
 
+  // 🌀 Contrôles
   controls = new OrbitControls(camera, renderer.domElement);
-  controls.minDistance = 50;
-  controls.maxDistance = 2500;
+  controls.target.copy(planet_sun.position);
+  controls.minDistance = 5;
+  controls.maxDistance = 15000;
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.05;
 
   window.addEventListener("resize", onWindowResize);
 }
 
+/* -----------------------------------------------------
+   Fond d’étoiles
+------------------------------------------------------ */
 function createStarsBackground() {
   const starsGeom = new THREE.BufferGeometry();
   const starsVerts = [];
-  const starDistance = 10000;
-
-  for (let i = 0; i < 20000; i++) {
+  const starDistance = 20000;
+  for (let i = 0; i < 15000; i++) {
     starsVerts.push(
       (Math.random() - 0.5) * starDistance,
       (Math.random() - 0.5) * starDistance,
       (Math.random() - 0.5) * starDistance
     );
   }
-
   starsGeom.setAttribute('position', new THREE.Float32BufferAttribute(starsVerts, 3));
-
   const stars = new THREE.Points(
     starsGeom,
-    new THREE.PointsMaterial({
-      color: 0xffffff,
-      size: 0.7,
-      transparent: true
-    })
+    new THREE.PointsMaterial({ color: 0xffffff, size: 0.8, transparent: true })
   );
-
   scene.add(stars);
 }
 
+/* -----------------------------------------------------
+   Texture planète
+------------------------------------------------------ */
 function loadPlanetTexture(texture, radius, widthSegments, heightSegments, meshType) {
   const geometry = new THREE.SphereGeometry(radius, widthSegments, heightSegments);
   const loader = new THREE.TextureLoader();
@@ -121,27 +139,31 @@ function loadPlanetTexture(texture, radius, widthSegments, heightSegments, meshT
   return new THREE.Mesh(geometry, material);
 }
 
+/* -----------------------------------------------------
+   Particules solaires rapprochées
+------------------------------------------------------ */
 function createSolarParticles() {
-  const particleCount = 700;
+  const particleCount = 500;
   const positions = [];
   for (let i = 0; i < particleCount; i++) {
     const theta = Math.random() * 2 * Math.PI;
     const phi = Math.acos(2 * Math.random() - 1);
-    const radius = 40.3 + Math.random() * 2.0;
+    const radius = 3 + Math.random() * 0.8;
     positions.push(
       radius * Math.sin(phi) * Math.cos(theta),
       radius * Math.sin(phi) * Math.sin(theta),
       radius * Math.cos(phi)
     );
   }
+
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   const sprite = new THREE.TextureLoader().load("https://threejs.org/examples/textures/sprites/spark1.png");
   const material = new THREE.PointsMaterial({
-    color: 0xffaa33,
-    size: 1.1,
+    color: 0xffcc55,
+    size: 0.8,
     transparent: true,
-    opacity: 0.5,
+    opacity: 0.6,
     blending: THREE.AdditiveBlending,
     map: sprite,
     depthWrite: false
@@ -150,15 +172,18 @@ function createSolarParticles() {
   planet_sun.add(particles);
 }
 
+/* -----------------------------------------------------
+   Arcs solaires
+------------------------------------------------------ */
 function createSolarArcs() {
   const arcCount = 12;
   for (let i = 0; i < arcCount; i++) {
     const startAngle = Math.random() * Math.PI * 2;
-    const arcRadius = 42 + Math.random() * 2;
-    const arcHeight = 1 + Math.random() * 2;
+    const arcRadius = 4.0 + Math.random() * 0.8;
+    const arcHeight = 0.5 + Math.random() * 1.5;
     const curve = new THREE.QuadraticBezierCurve3(
       new THREE.Vector3(arcRadius * Math.cos(startAngle), 0, arcRadius * Math.sin(startAngle)),
-      new THREE.Vector3(arcRadius * 0.85 * Math.cos(startAngle), arcHeight, arcRadius * 0.85 * Math.sin(startAngle)),
+      new THREE.Vector3(arcRadius * 0.9 * Math.cos(startAngle), arcHeight, arcRadius * 0.9 * Math.sin(startAngle)),
       new THREE.Vector3(arcRadius * Math.cos(startAngle + 0.15), 0, arcRadius * Math.sin(startAngle + 0.15))
     );
     const points = curve.getPoints(50);
@@ -166,9 +191,8 @@ function createSolarArcs() {
     const material = new THREE.LineBasicMaterial({
       color: 0xffdd88,
       transparent: true,
-      opacity: 0.05,
+      opacity: 0.1,
       blending: THREE.AdditiveBlending,
-      linewidth: 1
     });
     const arc = new THREE.Line(geometry, material);
     planet_sun.add(arc);
@@ -176,18 +200,31 @@ function createSolarArcs() {
   }
 }
 
+/* -----------------------------------------------------
+   Orbites elliptiques avec inclinaison exagérée
+------------------------------------------------------ */
 function planetRevolver(time) {
-  const speedMultiplier = 0.001;
+  const speedMultiplier = 0.0005;
   planets.forEach((p) => {
     const angle = time * speedMultiplier * p.speed;
-    p.mesh.position.x = p.orbit * Math.cos(angle);
-    p.mesh.position.z = p.orbit * Math.sin(angle);
+    const tiltRad = THREE.MathUtils.degToRad(p.tilt * exaggeration);
+
+    const b = p.a * Math.sqrt(1 - p.e * p.e);
+    const x = p.a * Math.cos(angle) - p.a * p.e;
+    const z = b * Math.sin(angle);
+    const y = z * Math.sin(tiltRad);
+    const zRot = z * Math.cos(tiltRad);
+
+    p.mesh.position.set(x, y, zRot);
   });
 }
 
+/* -----------------------------------------------------
+   Animation
+------------------------------------------------------ */
 function animate(time) {
   requestAnimationFrame(animate);
-  planet_sun.rotation.y += 0.004;
+  planet_sun.rotation.y += 0.002;
   planetRevolver(time);
   arcs.forEach((arc, i) => {
     const scale = 1 + 0.02 * Math.sin(time * 0.002 + i);
@@ -197,6 +234,9 @@ function animate(time) {
   controls.update();
 }
 
+/* -----------------------------------------------------
+   Resize
+------------------------------------------------------ */
 function onWindowResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
