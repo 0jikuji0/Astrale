@@ -22,14 +22,14 @@ const exaggeration = 3; // ajuster pour rendre inclinaisons visibles
    Données planètes avec excentricité et inclinaison
 ------------------------------------------------------ */
 const orbitData = [
-  { name: 'Mercure', texture: '/tests/img/mercury_hd.jpg', radius: 1.5, a: 0.387 * scale, e: 0.2056, speed: 4.15, color: 0x888888, tilt: 7.0 },
-  { name: 'Vénus',   texture: '/tests/img/venus_hd.jpg',   radius: 2.5, a: 0.723 * scale, e: 0.0068, speed: 1.62, color: 0xffff00, tilt: 3.4 },
-  { name: 'Terre',   texture: '/tests/img/earth_hd.jpg',   radius: 3,   a: 1.000 * scale, e: 0.0167, speed: 1.00, color: 0x0000ff, tilt: 0.0 },
-  { name: 'Mars',    texture: '/tests/img/mars_hd.jpg',    radius: 2,   a: 1.524 * scale, e: 0.0934, speed: 0.53, color: 0xff0000, tilt: 1.85 },
-  { name: 'Jupiter', texture: '/tests/img/jupiter_hd.jpg', radius: 8,   a: 5.203 * scale, e: 0.0484, speed: 0.08, color: 0xffa500, tilt: 1.3 },
-  { name: 'Saturne', texture: '/tests/img/saturn_hd.jpg',  radius: 7,   a: 9.537 * scale, e: 0.0541, speed: 0.03, color: 0xffd700, tilt: 2.49 },
-  { name: 'Uranus',  texture: '/tests/img/uranus_hd.jpg',  radius: 5,   a: 19.191 * scale, e: 0.0472, speed: 0.011, color: 0x00ffff, tilt: 0.77 },
-  { name: 'Neptune', texture: '/tests/img/neptune_hd.jpg', radius: 4,   a: 30.069 * scale, e: 0.0086, speed: 0.006, color: 0x00008b, tilt: 1.77 },
+  { name: 'Mercure', texture: '/Space/img/mercury_hd.jpg', radius: 1.5, a: 0.387 * scale, e: 0.2056, speed: 4.15, color: 0x888888, tilt: 7.0 },
+  { name: 'Vénus',   texture: '/Space/img/venus_hd.jpg',   radius: 2.5, a: 0.723 * scale, e: 0.0068, speed: 1.62, color: 0xffff00, tilt: 3.4 },
+  { name: 'Terre',   texture: '/Space/img/earth_hd.jpg',   radius: 3,   a: 1.000 * scale, e: 0.0167, speed: 1.00, color: 0x0000ff, tilt: 0.0 },
+  { name: 'Mars',    texture: '/Space/img/mars_hd.jpg',    radius: 2,   a: 1.524 * scale, e: 0.0934, speed: 0.53, color: 0xff0000, tilt: 1.85 },
+  { name: 'Jupiter', texture: '/Space/img/jupiter_hd.jpg', radius: 8,   a: 5.203 * scale, e: 0.0484, speed: 0.08, color: 0xffa500, tilt: 1.3 },
+  { name: 'Saturne', texture: '/Space/img/saturn_hd.jpg',  radius: 7,   a: 9.537 * scale, e: 0.0541, speed: 0.03, color: 0xffd700, tilt: 2.49 },
+  { name: 'Uranus',  texture: '/Space/img/uranus_hd.jpg',  radius: 5,   a: 19.191 * scale, e: 0.0472, speed: 0.011, color: 0x00ffff, tilt: 0.77 },
+  { name: 'Neptune', texture: '/Space/img/neptune_hd.jpg', radius: 4,   a: 30.069 * scale, e: 0.0086, speed: 0.006, color: 0x00008b, tilt: 1.77 },
 ];
 
 /* -----------------------------------------------------
@@ -40,7 +40,7 @@ function init() {
   createStarsBackground();
 
   // 🌞 Soleil
-  planet_sun = loadPlanetTexture("/tests/img/sun_hd.jpg", 3.5, 100, 100, 'basic');
+  planet_sun = loadPlanetTexture("/Space/img/sun_hd.jpg", 3.5, 100, 100, 'basic');
   scene.add(planet_sun);
 
   const sunLight = new THREE.PointLight(0xffffff, 2, 3000);
@@ -207,17 +207,24 @@ function planetRevolver(time) {
   const speedMultiplier = 0.0005;
   planets.forEach((p) => {
     const angle = time * speedMultiplier * p.speed;
-    const tiltRad = THREE.MathUtils.degToRad(p.tilt * exaggeration);
 
+    // Coordonnées sur ellipse plane XZ
     const b = p.a * Math.sqrt(1 - p.e * p.e);
     const x = p.a * Math.cos(angle) - p.a * p.e;
     const z = b * Math.sin(angle);
-    const y = z * Math.sin(tiltRad);
-    const zRot = z * Math.cos(tiltRad);
+    const pos = new THREE.Vector3(x, 0, z);
 
-    p.mesh.position.set(x, y, zRot);
+    // Appliquer rotation autour de X selon inclinaison exagérée
+    const tiltRad = THREE.MathUtils.degToRad(p.tilt * exaggeration);
+    const quaternion = new THREE.Quaternion();
+    quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, 0), tiltRad);
+    pos.applyQuaternion(quaternion);
+
+    // Position finale
+    p.mesh.position.copy(pos);
   });
 }
+
 
 /* -----------------------------------------------------
    Animation
