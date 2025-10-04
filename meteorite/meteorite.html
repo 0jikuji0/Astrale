@@ -13,7 +13,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 let scene, camera, renderer, asteroid, earth;
-
+let mouseX = 0, mouseY = 0;
+let targetRotationX = 0, targetRotationY = 0;
+let isDragging = false;
 // --- Scene & Renderer ---
 scene = new THREE.Scene();
 scene.background = new THREE.Color(0x000000);
@@ -74,18 +76,71 @@ for(let i=0;i<5000;i++){
 starsGeom.setAttribute('position', new THREE.Float32BufferAttribute(starsVerts, 3));
 scene.add(new THREE.Points(starsGeom, starsMat));
 
+
+            window.addEventListener('resize', onWindowResize);
+            canvas.addEventListener('mousedown', onMouseDown);
+            canvas.addEventListener('mousemove', onMouseMove);
+            canvas.addEventListener('mouseup', onMouseUp);
+            canvas.addEventListener('wheel', onWheel);
+
+                    function onMouseUp() {
+            isDragging = false;
+        }
+
+        function onWheel(e) {
+            e.preventDefault();
+            camera.position.z += e.deltaY * 0.001;
+            camera.position.z = Math.max(5, Math.min(30, camera.position.z));
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        function onMouseDown(e) {
+            isDragging = true;
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        }
+                function onMouseMove(e) {
+            if (isDragging) {
+                const deltaX = e.clientX - mouseX;
+                const deltaY = e.clientY - mouseY;
+
+                targetRotationY += deltaX * 0.005;
+                targetRotationX += deltaY * 0.005;
+
+                // Limiter la rotation verticale
+                targetRotationX = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, targetRotationX));
+
+                mouseX = e.clientX;
+                mouseY = e.clientY;
+            }
+        }
 // --- Animation ---
 function animate(){
   requestAnimationFrame(animate);
+
+  // Rotation de l'astéroïde
   asteroid.rotation.x += asteroid.r.x;
   asteroid.rotation.y += asteroid.r.y;
   asteroid.rotation.z += asteroid.r.z;
 
-  // Terre lente en arrière-plan
+  // Rotation Terre lente en arrière-plan
   earth.rotation.y += 0.0005;
+
+  // Appliquer la rotation de la caméra autour de l'astéroïde
+  const radius = 5; // distance de la caméra à l'astéroïde
+camera.position.x = radius * Math.sin(targetRotationY) * Math.cos(targetRotationX);
+camera.position.y = radius * Math.sin(targetRotationX);
+camera.position.z = radius * Math.cos(targetRotationY) * Math.cos(targetRotationX);
+camera.lookAt(asteroid.position);
+
 
   renderer.render(scene, camera);
 }
+
 animate();
 
 // --- Resize ---
