@@ -1,6 +1,7 @@
 import { useRef } from 'react';
+import { SRGBColorSpace } from 'three';
 
-import { OrbitControls, Stars } from '@react-three/drei';
+import { OrbitControls, Stars, useTexture } from '@react-three/drei';
 import { Canvas, useFrame } from '@react-three/fiber';
 
 import { decimalFormatter } from './formatters';
@@ -8,14 +9,17 @@ import { degToRad } from './utils';
 
 import type { RootState } from '@react-three/fiber';
 import type { Mesh } from 'three';
-
 import type { SimulationParams } from './types';
 
 const Earth = () => {
+    const earthMap = useTexture('https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg');
+    earthMap.colorSpace = SRGBColorSpace;
+    const earthNormalMap = useTexture('https://threejs.org/examples/textures/planets/earth_normal_2048.jpg');
+
     return (
         <mesh>
             <sphereGeometry args={[5, 64, 64]} />
-            <meshStandardMaterial color="#1d4ed8" emissive="#0f172a" emissiveIntensity={0.2} />
+            <meshStandardMaterial map={earthMap} normalMap={earthNormalMap} metalness={0.05} roughness={0.85} />
         </mesh>
     );
 };
@@ -25,6 +29,8 @@ type AsteroidProps = Pick<SimulationParams, 'radius' | 'velocity' | 'angle'>;
 const Asteroid = ({ radius, velocity, angle }: AsteroidProps) => {
     const meshRef = useRef<Mesh>(null!);
     const orbitRadius = 12;
+    const moonTexture = useTexture('https://threejs.org/examples/textures/planets/moon_1024.jpg');
+    moonTexture.colorSpace = SRGBColorSpace;
 
     useFrame((state: RootState, delta: number) => {
         if (!meshRef.current) return;
@@ -42,7 +48,7 @@ const Asteroid = ({ radius, velocity, angle }: AsteroidProps) => {
     return (
         <mesh ref={meshRef} castShadow>
             <sphereGeometry args={[Math.max(0.3, radius * 2), 32, 32]} />
-            <meshStandardMaterial color="#f97316" roughness={0.85} metalness={0.1} />
+            <meshStandardMaterial map={moonTexture} roughness={1} metalness={0.05} />
         </mesh>
     );
 };

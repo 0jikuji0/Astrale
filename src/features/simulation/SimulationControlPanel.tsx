@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 
 import { Button } from '@/components/ui/button';
+import { Sheet, SheetClose, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
 import { controlDefinitions, scenarioPresets } from './constants';
 import { compactFormatter, decimalFormatter, scientificFormatter } from './formatters';
@@ -27,16 +29,45 @@ const SimulationControlPanel = ({
     onPresetChange,
     onParamChange,
 }: SimulationControlPanelProps) => {
-    return (
+    const [open, setOpen] = useState(false);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const mediaQuery = window.matchMedia('(min-width: 1024px)');
+        const syncOpen = () => setOpen(mediaQuery.matches);
+        syncOpen();
+        const listener = () => syncOpen();
+        if (mediaQuery.addEventListener) {
+            mediaQuery.addEventListener('change', listener);
+        } else {
+            mediaQuery.addListener(listener);
+        }
+        return () => {
+            if (mediaQuery.removeEventListener) {
+                mediaQuery.removeEventListener('change', listener);
+            } else {
+                mediaQuery.removeListener(listener);
+            }
+        };
+    }, []);
+
+    const Panel = () => (
         <aside className="flex w-full max-w-xl flex-col gap-6 rounded-3xl border border-white/10 bg-slate-900/80 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.45)] backdrop-blur">
             <div className="flex items-start justify-between gap-4">
                 <div>
                     <p className="text-xs uppercase tracking-[0.45em] text-blue-300">Laboratoire</p>
                     <h1 className="mt-2 text-2xl font-semibold text-blue-100">Simulation 3D d'impact</h1>
                 </div>
-                <Button asChild size="sm" variant="ghost" className="text-slate-300">
-                    <Link to="/">Accueil</Link>
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Button asChild size="sm" variant="ghost" className="text-slate-300">
+                        <Link to="/">Accueil</Link>
+                    </Button>
+                    <SheetClose asChild>
+                        <Button size="sm" variant="ghost" className="text-slate-300">
+                            Fermer
+                        </Button>
+                    </SheetClose>
+                </div>
             </div>
 
             <div className="rounded-2xl border border-white/5 bg-slate-950/70 p-4">
@@ -123,6 +154,23 @@ const SimulationControlPanel = ({
                 </p>
             </div>
         </aside>
+    );
+
+    return (
+        <div className="flex w-full flex-col gap-4 lg:max-w-xl">
+            <Sheet open={open} onOpenChange={setOpen} modal={false}>
+                <SheetTrigger asChild>
+                    <Button className="w-full justify-between gap-2" variant="outline">
+                        {open ? 'Masquer les réglages' : 'Ouvrir les réglages'}
+                    </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-full max-w-xl border-white/10 bg-slate-900/80 p-0">
+                    <div className="h-full overflow-y-auto">
+                        <Panel />
+                    </div>
+                </SheetContent>
+            </Sheet>
+        </div>
     );
 };
 
