@@ -118,3 +118,35 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* globals.css */
+.shiny-border::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(130deg, #a855f7, #ec4899, #3b82f6, #a855f7);
+  background-size: 400% 400%;
+  animation: shiny-move 6s linear infinite;
+  z-index: 0;
+  filter: blur(4px);
+  opacity: 0.7;
+  border-radius: 0.5rem;
+  transition: filter 0.3s ease, opacity 0.3s ease;
+}
+
+.group:hover .shiny-border::before {
+  filter: blur(6px);
+  opacity: 1;
+}
+
+@keyframes shiny-move {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}

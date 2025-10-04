@@ -1,39 +1,58 @@
-import { Link } from 'react-router';
-
-import { Button } from '@/components/ui/button';
+import { Link } from "react-router";
+import { Button } from "@/components/ui/button";
+import Badge from "@/components/ui/badge";
 
 const HomeHero = () => {
-    return (
-        <header className="relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/30 via-transparent to-purple-500/30 blur-3xl" aria-hidden />
-            <div className="relative mx-auto flex w-full max-w-6xl flex-col gap-16 px-6 py-24">
-                <div className="flex flex-col gap-10">
-                    <div className="flex items-center justify-between">
-                        <p className="text-sm font-semibold uppercase tracking-[0.3em] text-blue-300">Meteor Madness</p>
-                        <Button asChild variant="outline" className="border-blue-400/60 bg-slate-900/60 text-blue-100 backdrop-blur">
-                            <Link to="/simulation">Accéder à la simulation</Link>
-                        </Button>
-                    </div>
-                    <div className="flex flex-col gap-6 md:max-w-3xl">
-                        <h1 className="text-4xl font-bold leading-tight sm:text-5xl md:text-6xl">
-                            Modélisez l&apos;impact d&apos;un astéroïde et préparez des stratégies de défense.
-                        </h1>
-                        <p className="text-lg text-slate-300 md:text-xl">
-                            Astrale rassemble les données de la NASA et de l&apos;USGS pour transformer des paramètres bruts en scénarios immersifs. Explorez les conséquences d&apos;une collision, testez des tactiques de déviation et partagez des fiches d&apos;impact prêtes pour les décideurs.
-                        </p>
-                        <div className="flex flex-col gap-4 sm:flex-row">
-                            <Button asChild size="lg" className="bg-blue-500 text-slate-50 shadow-lg shadow-blue-600/30">
-                                <Link to="/simulation">Lancer la simulation</Link>
-                            </Button>
-                            <Button asChild size="lg" variant="ghost" className="text-slate-300">
-                                <a href="#presentation">Découvrir la plateforme</a>
-                            </Button>
-                        </div>
-                    </div>
-                </div>
+  return (
+    <header className="relative min-h-screen flex items-center justify-center overflow-hidden">
+      <div
+        className="absolute inset-0 bg-gradient-to-br from-blue-500/30 via-transparent to-purple-500/30 blur-3xl"
+        aria-hidden
+      />
+      <div className="relative flex flex-col gap-16 px-6 text-center max-w-4xl w-full">
+        <div className="flex flex-col ">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <div className="flex flex-col items-center gap-5">
+              <Badge text="NASA SPACE APPS 25" color="blue" variant="outline" />
+              <p className="text-xl font-semibold uppercase tracking-[0.3em] text-blue-300 mb-3">
+                Meteor Madness
+              </p>
             </div>
-        </header>
-    );
+          </div>
+          <div className="flex flex-col gap-6">
+            <h1 className="text-4xl font-bold leading-tight sm:text-5xl md:text-6xl">
+              Modélisez l&apos;impact d&apos;un astéroïde et préparez des
+              stratégies de défense.
+            </h1>
+            <p className="text-lg text-slate-300 md:text-xl">
+              Astrale rassemble les données de la NASA et de l&apos;USGS pour
+              transformer des paramètres bruts en scénarios immersifs. Explorez
+              les conséquences d&apos;une collision, testez des tactiques de
+              déviation et partagez des fiches d&apos;impact prêtes pour les
+              décideurs.
+            </p>
+            <div className="flex flex-col gap-4 sm:flex-row justify-center">
+              <Button
+                asChild
+                size="lg"
+                className="bg-blue-500 text-slate-50 shadow-blue-600/30 transition-all duration-300 hover:shadow-blue-300 hover:scale-[1.02] hover:bg-linear-65 hover:from-purple-600 hover:to-blue-500"
+              >
+                <Link to="/simulation">Lancer la simulation</Link>
+              </Button>
+              <Button
+                asChild
+                size="lg"
+                variant="ghost"
+                className="text-slate-300 transition-all duration-300 hover:scale-[1.02]"
+              >
+                <a href="#presentation">Découvrir la plateforme</a>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+  );
 };
 
 export default HomeHero;
