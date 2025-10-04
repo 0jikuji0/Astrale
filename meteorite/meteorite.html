@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Astéroïde avec Terre en fond</title>
+<style>
+  body { margin:0; overflow:hidden; }
+  canvas { display:block; }
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+let scene, camera, renderer, asteroid, earth;
+
+// --- Scene & Renderer ---
+scene = new THREE.Scene();
+scene.background = new THREE.Color(0x000000);
+
+// Caméra plongée
+camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 5000);
+camera.position.set(0, 5, 5); // au-dessus et légèrement en arrière
+camera.lookAt(0,0,0); // regarder le centre
+
+renderer = new THREE.WebGLRenderer({canvas: document.getElementById('canvas'), antialias:true});
+renderer.setSize(window.innerWidth, window.innerHeight);
+
+// --- Lumières ---
+scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+const light1 = new THREE.PointLight(0xff7f24, 2, 2000);
+light1.position.set(10,10,10);
+scene.add(light1);
+
+const light2 = new THREE.PointLight(0x6495ed, 2, 2000);
+light2.position.set(-10,-5,-10);
+scene.add(light2);
+
+// --- Terre en arrière-plan ---
+const earthGeo = new THREE.SphereGeometry(2, 64, 64);
+const earthTex = new THREE.TextureLoader().load(
+  'https://unpkg.com/three-globe@2.24.4/example/img/earth-blue-marble.jpg'
+);
+const earthMat = new THREE.MeshPhongMaterial({ map: earthTex, shininess: 10 });
+earth = new THREE.Mesh(earthGeo, earthMat);
+earth.position.set(0, -2, -10); // légèrement derrière et plus bas pour profondeur
+scene.add(earth);
+
+// --- Astéroïde au centre ---
+const geom = new THREE.DodecahedronGeometry(1, 1);
+const pos = geom.attributes.position;
+const v = new THREE.Vector3();
+for(let i=0;i<pos.count;i++){
+  v.fromBufferAttribute(pos,i);
+  v.x += (Math.random()-0.5)*0.3;
+  v.y += (Math.random()-0.5)*0.3;
+  v.z += (Math.random()-0.5)*0.3;
+  pos.setXYZ(i,v.x,v.y,v.z);
+}
+pos.needsUpdate = true;
+
+const mat = new THREE.MeshStandardMaterial({color:0x888888, flatShading:true, roughness:0.9, metalness:0.1});
+asteroid = new THREE.Mesh(geom, mat);
+asteroid.r = {x:0.002, y:0.004, z:0.003};
+scene.add(asteroid);
+
+// --- Etoiles ---
+const starsGeom = new THREE.BufferGeometry();
+const starsMat = new THREE.PointsMaterial({color:0xffffff, size:0.01});
+const starsVerts = [];
+for(let i=0;i<5000;i++){
+  starsVerts.push((Math.random()-0.5)*200, (Math.random()-0.5)*200, (Math.random()-0.5)*200);
+}
+starsGeom.setAttribute('position', new THREE.Float32BufferAttribute(starsVerts, 3));
+scene.add(new THREE.Points(starsGeom, starsMat));
+
+// --- Animation ---
+function animate(){
+  requestAnimationFrame(animate);
+  asteroid.rotation.x += asteroid.r.x;
+  asteroid.rotation.y += asteroid.r.y;
+  asteroid.rotation.z += asteroid.r.z;
+
+  // Terre lente en arrière-plan
+  earth.rotation.y += 0.0005;
+
+  renderer.render(scene, camera);
+}
+animate();
+
+// --- Resize ---
+window.addEventListener('resize', ()=>{
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>
