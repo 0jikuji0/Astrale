@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
 import Badge from "@/components/ui/badge";
+import TextType from "@/components/ui/texttype";
 
 const HomeHero = () => {
   return (
@@ -13,7 +14,18 @@ const HomeHero = () => {
         <div className="flex flex-col ">
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <div className="flex flex-col items-center gap-5">
-              <Badge text="NASA SPACE APPS 25" color="blue" variant="outline" />
+              <Badge color="blue" variant="outline">
+                <TextType
+                  text="NASA SPACE APPS - 25"
+                  typingSpeed={75}
+                  deletingSpeed={50}
+                  pauseDuration={1500}
+                  showCursor={true}
+                  cursorCharacter="|"
+                  loop={true}
+                  className="text-xs text-gray-300"
+                />
+              </Badge>
               <p className="text-xl font-semibold uppercase tracking-[0.3em] text-blue-300 mb-3">
                 Meteor Madness
               </p>
