@@ -1,4 +1,3 @@
-# config_schema.py
 from pydantic import BaseModel, Field, conlist
 from typing import List, Literal, Optional, Dict
 

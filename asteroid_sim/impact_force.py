@@ -1,4 +1,3 @@
-# impact_force.py
 import math
 
 M_EARTH_KG = 5.972e24
