@@ -4,41 +4,123 @@
 <meta charset="UTF-8">
 <title>Météorite avec Terre</title>
 <style>
-  body { margin:0; overflow:hidden; font-family:sans-serif; }
-  canvas { display:block; }
-  #ui {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    z-index: 10;
-    background: rgba(0,0,0,0.4);
-    padding: 8px;
-    border-radius: 8px;
-    color:white;
-  }
-  label { display:block; margin:6px 0 2px; font-size:14px; }
-  input { width:120px; }
-  button { margin-top:8px; padding:6px 12px; font-size:14px; }
-  .label {
-    font-size: 14px;
-    color: white;
-    background: rgba(0,0,0,0.6);
-    padding: 2px 6px;
-    border-radius: 4px;
-    white-space: nowrap;
-  }
+body { margin:0; overflow:hidden; font-family:sans-serif; background: #000; color:#fff; }
+canvas { display:block; }
+
+#ui {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 10;
+  background: rgba(0,0,0,0.6);
+  padding: 10px;
+  border-radius: 8px;
+  width: 240px;
+}
+
+label { display:block; margin:6px 0 2px; font-size:14px; }
+input { width:100%; }
+button { margin-top:8px; padding:6px 12px; font-size:14px; width:100%; }
+
+.label {
+  font-size: 14px;
+  color: yellow;
+  background: rgba(0,0,0,0.7);
+  padding: 4px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  position: absolute;
+}
+
+/* --- Sliders --- */
+input[type="range"] {
+  width: 100%;
+  margin-bottom: 4px;
+}
+
+/* --- Boutons --- */
+button {
+  padding: 6px 12px;
+  font-size: 14px;
+  cursor: pointer;
+  border: none;
+  border-radius: 6px;
+  background: #222;
+  color: #fff;
+  transition: background 0.2s;
+}
+button:hover {
+  background: #555;
+}
+
+/* --- Valeurs affichées à côté des sliders --- */
+#sizeValue, #speedValue {
+  font-size: 13px;
+  display: inline-block;
+  margin-top: -4px;
+  margin-bottom: 4px;
+}
+
+/* --- Distance affichée --- */
+#distanceValue {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(0,0,0,0.6);
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  z-index: 20;
+  white-space: nowrap;
+}
+
+/* --- Champs position / vitesse --- */
+#initialValues label {
+  font-size: 13px;
+  margin-top: 4px;
+}
+#initialValues input {
+  width: 60px;
+  display:inline-block;
+  margin-right: 4px;
+}
+
 </style>
 </head>
 <body>
+
 <div id="ui">
   <button id="playPauseBtn">Play / Pause</button>
-  <label for="sizeRange">Taille météorite</label>
-  <input type="range" id="sizeRange" min="0.2" max="2" step="0.1" value="0.5">
-  <label for="speedRange">Vitesse</label>
-  <input type="range" id="speedRange" min="0.0005" max="0.01" step="0.0005" value="0.002">
-  <button id="rewindBtn">Rejouer</button>
-</div>
-<script type="module" src="meteorite.js"></script>
+  <button id="rewindBtn">Rewind</button>
 
+  <label for="sizeRange">Taille (m)</label>
+  <input id="sizeRange" type="range" min="1" max="200" value="40">
+  <span id="sizeValue">40 m</span>
+
+  <label for="speedRange">Vitesse (km/s)</label>
+  <input id="speedRange" type="range" min="1" max="70" value="10">
+  <span id="speedValue">10 km/s</span>
+
+  <div id="initialValues">
+    <label>Position initiale (km)</label>
+    X: <input id="posX" type="number" value="200">
+    Y: <input id="posY" type="number" value="50">
+    Z: <input id="posZ" type="number" value="600">
+
+    <label>Vitesse initiale (km/s)</label>
+    VX: <input id="velX" type="number" value="0">
+    VY: <input id="velY" type="number" value="0">
+    VZ: <input id="velZ" type="number" value="-10">
+
+    <button id="computeBtn">Calculer trajectoire</button>
+  </div>
+</div>
+
+<div>
+  Distance à la Terre : <span id="distanceValue">0 km</span>
+</div>
+
+<script type="module" src="meteorite.js"></script>
 </body>
 </html>
+  
