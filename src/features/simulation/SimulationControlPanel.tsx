@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router';
 
-import { Button } from '@/components/ui/button';
-import { Sheet, SheetClose, SheetContent } from '@/components/ui/sheet';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
 
 import { controlDefinitions, scenarioPresets } from './constants';
+import { SIMULATION_EVENTS } from './events';
 import { compactFormatter, decimalFormatter, scientificFormatter } from './formatters';
 
 import type { PresetKey } from './constants';
@@ -22,8 +21,6 @@ type SimulationControlPanelProps = {
     open: boolean;
     onOpenChange: (open: boolean) => void;
 };
-
-const SELECTED_PLANET_EVENT = 'simulation:selected-planet-change';
 
 type SelectedPlanetEventDetail = {
     planetName: string | null;
@@ -55,8 +52,8 @@ const SimulationControlPanel = ({
             setActivePlanet(detail.planetName);
             setPlanetParams(detail.params);
         };
-        window.addEventListener(SELECTED_PLANET_EVENT, handler as EventListener);
-        return () => window.removeEventListener(SELECTED_PLANET_EVENT, handler as EventListener);
+        window.addEventListener(SIMULATION_EVENTS.SELECTED_PLANET_CHANGE, handler as EventListener);
+        return () => window.removeEventListener(SIMULATION_EVENTS.SELECTED_PLANET_CHANGE, handler as EventListener);
     }, []);
 
     const handlePlanetParamChange = (key: keyof SimulationParams, value: number) => {
@@ -65,13 +62,11 @@ const SimulationControlPanel = ({
         const updated = { ...planetParams, [key]: value };
         setPlanetParams(updated);
 
-        if (typeof window !== 'undefined') {
-            window.dispatchEvent(
-                new CustomEvent('simulation:update-planet-params', {
-                    detail: { planetName: activePlanet, params: updated },
-                })
-            );
-        }
+        window.dispatchEvent(
+            new CustomEvent(SIMULATION_EVENTS.UPDATE_PLANET_PARAMS, {
+                detail: { planetName: activePlanet, params: updated },
+            })
+        );
     };
 
     const Panel = () => (
@@ -89,7 +84,7 @@ const SimulationControlPanel = ({
                     <select
                         value={selectedPreset}
                         onChange={(event) => onPresetChange(event.target.value as ControlPanelPresetKey)}
-                        className="rounded-lg border border-[#2E96F5]/40 bg-[#041032]/80 px-3 py-2 text-white focus:border-[#eafe07] focus:outline-none"
+                        className="rounded-lg border border-[#2E96F5]/40 bg-[#041032]/80 px-3 py-2 text-white focus:border-[#c026d3] focus:outline-none"
                     >
                         {Object.entries(scenarioPresets).map(([key, preset]) => (
                             <option key={key} value={key}>
@@ -105,16 +100,16 @@ const SimulationControlPanel = ({
                         Les réglages s'appliquent à la planète actuellement sélectionnée dans la scène 3D. Sans sélection,
                         ils contrôlent l'objet de simulation par défaut.
                     </p>
-                    <p className="mt-2 text-[#eafe07]">
+                    <p className="mt-2 text-[#c026d3]">
                         Contrôle actif&nbsp;: {activePlanet ?? 'Objet de mission'}
                     </p>
                 </div>
             </div>
 
             {activePlanet && (
-                <section className="rounded-2xl border border-[#eafe07]/35 bg-[#eafe07]/5 p-4 backdrop-blur-xl">
+                <section className="rounded-2xl border border-[#c026d3]/35 bg-[#c026d3]/5 p-4 backdrop-blur-xl">
                     <div className="flex items-center justify-between">
-                        <h2 className="text-sm font-semibold uppercase tracking-wide text-[#eafe07]">
+                        <h2 className="text-sm font-semibold uppercase tracking-wide text-[#c026d3]">
                             Édition: {activePlanet}
                         </h2>
                         <span className="text-xs text-[#A8B9FF]">Planète sélectionnée</span>
@@ -124,13 +119,13 @@ const SimulationControlPanel = ({
                     </p>
                     <div className="mt-4 flex flex-col gap-4">
                         {controlDefinitions.map((control) => (
-                            <div key={control.key} className="rounded-xl border border-[#eafe07]/25 bg-[#041032]/50 p-3">
+                            <div key={control.key} className="rounded-xl border border-[#c026d3]/25 bg-[#041032]/50 p-3">
                                 <div className="flex items-center justify-between gap-2">
                                     <div>
                                         <p className="text-sm font-medium text-white">{control.label}</p>
                                         <p className="text-xs text-[#A8B9FF]">{control.description}</p>
                                     </div>
-                                    <span className="text-sm font-semibold text-[#eafe07]">
+                                    <span className="text-sm font-semibold text-[#c026d3]">
                                         {decimalFormatter.format(planetParams[control.key])} {control.unit}
                                     </span>
                                 </div>
@@ -141,7 +136,7 @@ const SimulationControlPanel = ({
                                     step={control.step}
                                     value={planetParams[control.key]}
                                     onChange={(event) => handlePlanetParamChange(control.key, parseFloat(event.target.value))}
-                                    className="mt-3 h-2 w-full cursor-pointer appearance-none rounded-full bg-[#0B1F4F] accent-[#eafe07]"
+                                    className="mt-3 h-2 w-full cursor-pointer appearance-none rounded-full bg-[#0B1F4F] accent-[#c026d3]"
                                 />
                             </div>
                         ))}
@@ -167,7 +162,7 @@ const SimulationControlPanel = ({
                                 <p className="text-sm font-medium text-white">{control.label}</p>
                                 <p className="text-xs text-[#A8B9FF]">{control.description}</p>
                             </div>
-                            <span className="text-sm font-semibold text-[#eafe07]">
+                            <span className="text-sm font-semibold text-[#c026d3]">
                                 {decimalFormatter.format(params[control.key])} {control.unit}
                             </span>
                         </div>
@@ -189,34 +184,34 @@ const SimulationControlPanel = ({
                 <dl className="mt-4 grid gap-4 text-sm text-[#E6ECFF]">
                     <div className="flex items-start justify-between gap-3">
                         <dt className="text-[#A8B9FF]">Énergie cinétique</dt>
-                        <dd className="text-right font-semibold text-[#eafe07]">{scientificFormatter.format(derived.energy)} J</dd>
+                        <dd className="text-right font-semibold text-[#c026d3]">{scientificFormatter.format(derived.energy)} J</dd>
                     </div>
                     <div className="flex items-start justify-between gap-3">
                         <dt className="text-[#A8B9FF]">Équivalent TNT</dt>
-                        <dd className="text-right font-semibold text-[#eafe07]">{decimalFormatter.format(derived.energyMegaton)} Mt</dd>
+                        <dd className="text-right font-semibold text-[#c026d3]">{decimalFormatter.format(derived.energyMegaton)} Mt</dd>
                     </div>
                     <div className="flex items-start justify-between gap-3">
                         <dt className="text-[#A8B9FF]">Magnitude sismique estimée</dt>
-                        <dd className="text-right font-semibold text-[#eafe07]">M {decimalFormatter.format(derived.richter)}</dd>
+                        <dd className="text-right font-semibold text-[#c026d3]">M {decimalFormatter.format(derived.richter)}</dd>
                     </div>
                     <div className="flex items-start justify-between gap-3">
                         <dt className="text-[#A8B9FF]">Diamètre de cratère</dt>
-                        <dd className="text-right font-semibold text-[#eafe07]">{decimalFormatter.format(derived.craterDiameterKm)} km</dd>
+                        <dd className="text-right font-semibold text-[#c026d3]">{decimalFormatter.format(derived.craterDiameterKm)} km</dd>
                     </div>
                     <div className="flex items-start justify-between gap-3">
                         <dt className="text-[#A8B9FF]">Hauteur potentielle de tsunami</dt>
-                        <dd className="text-right font-semibold text-[#eafe07]">{decimalFormatter.format(derived.tsunamiHeight)} m</dd>
+                        <dd className="text-right font-semibold text-[#c026d3]">{decimalFormatter.format(derived.tsunamiHeight)} m</dd>
                     </div>
                     <div className="flex items-start justify-between gap-3">
                         <dt className="text-[#A8B9FF]">Fenêtre d'alerte restante</dt>
-                        <dd className="text-right font-semibold text-[#eafe07]">{decimalFormatter.format(derived.warningHours)} h</dd>
+                        <dd className="text-right font-semibold text-[#c026d3]">{decimalFormatter.format(derived.warningHours)} h</dd>
                     </div>
                 </dl>
             </section>
 
             <div className="flex flex-col gap-3 rounded-2xl border border-white/15 bg-white/10 p-4 text-xs text-[#A8B9FF] backdrop-blur-xl">
                 <p>
-                    <span className="font-semibold text-[#eafe07]">Conseil stratégie&nbsp;:</span> un changement de vitesse de{' '}
+                    <span className="font-semibold text-[#c026d3]">Conseil stratégie&nbsp;:</span> un changement de vitesse de{' '}
                     <span className="font-semibold text-white">{compactFormatter.format(derived.deflectionDelta)} m/s</span> pourrait suffire à éviter un impact direct.
                 </p>
                 <p>

@@ -5,17 +5,18 @@ import { DoubleSide, Quaternion, SRGBColorSpace, Vector3 } from 'three';
 import { Edges, Line, OrbitControls, Stars, useCursor, useTexture } from '@react-three/drei';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 
+import { astronomicalToCartesian, fetchCelestialPositions, mapPlanetName } from './astronomyApi';
+import { SIMULATION_EVENTS } from './events';
 import { decimalFormatter } from './formatters';
 import { degToRad } from './utils';
 
 import type { ChangeEvent } from 'react';
-
 import type { MutableRefObject } from 'react';
-
 import type { RootState, ThreeEvent } from '@react-three/fiber';
 import type { Group, Mesh } from 'three';
 import type { SimulationParams } from './types';
-import type { OrbitControls as OrbitControlsImpl } from 'three/examples/jsm/controls/OrbitControls.js';
+import type { PositionsResponse, AstronomicalPosition } from './astronomyApi';
+import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 
 const AU_TO_SCENE_UNITS = 32;
 const DEFAULT_CAMERA_POSITION = new Vector3(7, AU_TO_SCENE_UNITS * 1, AU_TO_SCENE_UNITS * 5);
@@ -54,9 +55,9 @@ const orbitalDetailFormatter = new Intl.NumberFormat('fr-FR', {
 const distanceFormatter = new Intl.NumberFormat('fr-FR', {
     maximumFractionDigits: 2,
 });
-const SELECTED_PLANET_EVENT = 'simulation:selected-planet-change';
-const UPDATE_PLANET_PARAMS_EVENT = 'simulation:update-planet-params';
+
 const DEFAULT_TARGET_KEY = '__default__';
+
 type SelectedPlanetEventDetail = {
     planetName: string | null;
     params: SimulationParams;
@@ -111,7 +112,8 @@ type AsteroidDefinition = {
 type VectorTuple = [number, number, number];
 
 type FocusState = {
-    definition: PlanetDefinition;
+    definition: PlanetDefinition | AsteroidDefinition;
+    type: 'planet' | 'asteroid';
 };
 
 const planetDefinitions: ReadonlyArray<PlanetDefinition> = [
@@ -308,6 +310,17 @@ const Asteroid = ({ definition, isSelected, onSelect, onPositionChange }: Astero
     const [hovered, setHovered] = useState(false);
     useCursor(hovered);
 
+    const asteroidTextures = useTexture({
+        map: '/images/Rock030_1K-JPG_Color.jpg',
+        roughnessMap: '/images/Rock030_1K-JPG_Roughness.jpg',
+        normalMap: '/images/Rock030_1K-JPG_NormalGL.jpg',
+        displacementMap: '/images/Rock030_1K-JPG_Displacement.jpg',
+        aoMap: '/images/Rock030_1K-JPG_AmbientOcclusion.jpg',
+    });
+
+    // Set color space for the base texture
+    asteroidTextures.map.colorSpace = SRGBColorSpace;
+
     const orbitQuaternion = useMemo(
         () => new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), definition.orbit.inclination),
         [definition.orbit.inclination],
@@ -374,13 +387,18 @@ const Asteroid = ({ definition, isSelected, onSelect, onPositionChange }: Astero
                     onPointerOver={handlePointerOver}
                     onPointerOut={handlePointerOut}
                 >
-                    <dodecahedronGeometry args={[1, 0]} />
+                    <sphereGeometry args={[1, 64, 64]} />
                     <meshStandardMaterial
-                        color={definition.color}
-                        roughness={0.9}
-                        metalness={0.3}
+                        map={asteroidTextures.map}
+                        roughnessMap={asteroidTextures.roughnessMap}
+                        roughness={0.8}
+                        metalness={0.1}
+                        normalMap={asteroidTextures.normalMap}
+                        displacementMap={asteroidTextures.displacementMap}
+                        displacementScale={0.3}
+                        aoMap={asteroidTextures.aoMap}
                         emissive={definition.color}
-                        emissiveIntensity={isSelected ? 0.4 : 0}
+                        emissiveIntensity={isSelected ? 0.3 : 0}
                     />
                     {isSelected ? <Edges scale={1.1} color="#ff0000" /> : null}
                 </mesh>
@@ -468,7 +486,7 @@ const OrbitPath = ({ orbit, color }: OrbitPathProps) => {
             computed.push([point.x, point.y, point.z]);
         }
         return computed;
-    }, [orbit.eccentricity, orbit.inclination, orbit.semiMajorAxis]);
+    }, [orbit]);
 
     return <Line points={points} color={color} transparent opacity={0.18} raycast={() => null} />;
 };
@@ -575,7 +593,7 @@ const Planet = ({ definition, isSelected, onSelect, onPositionChange, activePara
                         emissive={definition.color}
                         emissiveIntensity={isSelected ? emissiveIntensity : 0}
                     />
-                    {isSelected ? <Edges scale={1.08} color="#eafe07" /> : null}
+                    {isSelected ? <Edges scale={1.08} color="#c026d3" /> : null}
                 </mesh>
                 {definition.rings ? <PlanetRings {...definition.rings} /> : null}
             </group>
@@ -589,7 +607,7 @@ const CameraFocusManager = ({
     focusPositionRef,
 }: {
     focusState: FocusState | null;
-    controlsRef: React.RefObject<OrbitControlsImpl>;
+    controlsRef: React.RefObject<OrbitControlsImpl | null>;
     focusPositionRef: MutableRefObject<Vector3>;
 }) => {
     const { camera } = useThree();
@@ -608,7 +626,9 @@ const CameraFocusManager = ({
         gsap.killTweensOf(camera.position);
         gsap.killTweensOf(controls.target);
 
-        const update = () => controls.update();
+        const update = () => {
+            controls.update();
+        };
 
         if (!focusState) {
             offsetRef.current.direction.set(0, 0, 1);
@@ -641,8 +661,9 @@ const CameraFocusManager = ({
         if (direction.lengthSq() < 1e-3) {
             direction.set(0, 0, 1);
         }
-        offsetRef.current.distance = Math.max(16, focusState.definition.scale * 6.5);
-        offsetRef.current.height = focusState.definition.scale * 2;
+        const scale = focusState.type === 'planet' ? (focusState.definition as PlanetDefinition).scale : (focusState.definition as AsteroidDefinition).scale;
+        offsetRef.current.distance = Math.max(focusState.type === 'asteroid' ? 4 : 16, scale * 6.5);
+        offsetRef.current.height = scale * 2;
         offsetRef.current.direction.copy(direction);
 
         const cameraDestination = targetVector.clone().add(direction.multiplyScalar(offsetRef.current.distance));
@@ -826,7 +847,7 @@ const Earth = ({ definition, isSelected, activeParams, onSelect, onPositionChang
                         emissive="#1d4ed8"
                         emissiveIntensity={emissiveIntensity}
                     />
-                    {isSelected ? <Edges scale={1.04} color="#eafe07" /> : null}
+                    {isSelected ? <Edges scale={1.04} color="#c026d3" /> : null}
                 </mesh>
                 <Atmosphere radius={EARTH_RADIUS * 1.08 * radiusMultiplier} />
             </group>
@@ -877,6 +898,7 @@ const SimulationViewport = ({ params, controlPanelOpen: externalControlPanelOpen
     const earthPositionRef = useRef(new Vector3());
     const focusPositionRef = useRef(new Vector3());
     const planetPositionsRef = useRef<Record<string, Vector3>>({});
+    const asteroidPositionsRef = useRef<Record<string, Vector3>>({});
     const registeredPlanetsRef = useRef(new Set<string>());
     const totalPlanets = planetDefinitions.length + 1;
     const [focusState, setFocusState] = useState<FocusState | null>(null);
@@ -887,6 +909,61 @@ const SimulationViewport = ({ params, controlPanelOpen: externalControlPanelOpen
     const planetParamsRef = useRef<Record<string, SimulationParams>>({});
     const latestParamsRef = useRef(params);
     const activeTargetRef = useRef<string | null>(null);
+
+    // Add API state management
+    const [astronomyData, setAstronomyData] = useState<PositionsResponse | null>(null);
+    const [apiLoading, setApiLoading] = useState(true);
+    const [apiError, setApiError] = useState<string | null>(null);
+
+    // Fetch real astronomical data
+    useEffect(() => {
+        const fetchAstronomyData = async () => {
+            try {
+                setApiLoading(true);
+                setApiError(null);
+                // Fetch positions for current date/time
+                const data = await fetchCelestialPositions(
+                    48.8566, // Paris latitude (default)
+                    2.3522,  // Paris longitude (default)
+                    100,     // elevation in meters
+                    1        // UTC+1 timezone
+                );
+                setAstronomyData(data);
+            } catch (error) {
+                console.error('Failed to fetch astronomy data:', error);
+                setApiError(error instanceof Error ? error.message : 'Failed to fetch astronomical data');
+            } finally {
+                setApiLoading(false);
+            }
+        };
+
+        fetchAstronomyData();
+
+        // Refresh data every 5 minutes
+        const interval = setInterval(fetchAstronomyData, 5 * 60 * 1000);
+        return () => clearInterval(interval);
+    }, []);
+
+    // Map API positions to planet real-time coordinates
+    const astronomicalPositions = useMemo(() => {
+        if (!astronomyData) return new Map<string, Vector3>();
+
+        const positions = new Map<string, Vector3>();
+
+        astronomyData.positions.forEach((astroPos: AstronomicalPosition) => {
+            const planetName = mapPlanetName(astroPos.name);
+            if (planetName) {
+                const [x, y, z] = astronomicalToCartesian(
+                    astroPos.ra,
+                    astroPos.dec,
+                    AU_TO_SCENE_UNITS * 10 // Scale factor for visibility
+                );
+                positions.set(planetName, new Vector3(x, y, z));
+            }
+        });
+
+        return positions;
+    }, [astronomyData]);
 
     const controlPanelOpen = externalControlPanelOpen ?? internalControlPanelOpen;
     const setControlPanelOpen = onControlPanelOpenChange ?? setInternalControlPanelOpen;
@@ -907,12 +984,12 @@ const SimulationViewport = ({ params, controlPanelOpen: externalControlPanelOpen
             planetParamsRef.current[detail.planetName] = { ...detail.params };
         };
 
-        window.addEventListener(UPDATE_PLANET_PARAMS_EVENT, handler as EventListener);
-        return () => window.removeEventListener(UPDATE_PLANET_PARAMS_EVENT, handler as EventListener);
+        window.addEventListener(SIMULATION_EVENTS.UPDATE_PLANET_PARAMS, handler as EventListener);
+        return () => window.removeEventListener(SIMULATION_EVENTS.UPDATE_PLANET_PARAMS, handler as EventListener);
     }, []);
 
     const emitFocusChange = useCallback(
-        (definition: PlanetDefinition | null) => {
+        (definition: PlanetDefinition | AsteroidDefinition | null) => {
             if (typeof window === 'undefined') return;
             const key = definition?.name ?? DEFAULT_TARGET_KEY;
             const fallback =
@@ -923,7 +1000,7 @@ const SimulationViewport = ({ params, controlPanelOpen: externalControlPanelOpen
             planetParamsRef.current[key] = snapshot;
             window.dispatchEvent(
                 new CustomEvent<SelectedPlanetEventDetail>(
-                    SELECTED_PLANET_EVENT,
+                    SIMULATION_EVENTS.SELECTED_PLANET_CHANGE,
                     { detail: { planetName: definition?.name ?? null, params: snapshot } } as CustomEventInit<SelectedPlanetEventDetail>,
                 ),
             );
@@ -947,17 +1024,23 @@ const SimulationViewport = ({ params, controlPanelOpen: externalControlPanelOpen
 
     const handlePlanetSelect = useCallback((definition: PlanetDefinition, position: VectorTuple) => {
         focusPositionRef.current.set(position[0], position[1], position[2]);
-        setFocusState({ definition });
+        setFocusState({ definition, type: 'planet' });
+        setSelectedAsteroid(null);
     }, []);
 
     const handlePlanetPositionUpdate = useCallback(
         (definition: PlanetDefinition, position: Vector3) => {
             const store = planetPositionsRef.current;
+
+            // Override with real astronomical position if available
+            const realPosition = astronomicalPositions.get(definition.name);
+            const finalPosition = realPosition || position;
+
             const existing = store[definition.name];
             if (existing) {
-                existing.copy(position);
+                existing.copy(finalPosition);
             } else {
-                store[definition.name] = position.clone();
+                store[definition.name] = finalPosition.clone();
             }
             if (!registeredPlanetsRef.current.has(definition.name)) {
                 registeredPlanetsRef.current.add(definition.name);
@@ -966,25 +1049,35 @@ const SimulationViewport = ({ params, controlPanelOpen: externalControlPanelOpen
                 }
             }
             if (definition.name === earthDefinition.name) {
-                earthPositionRef.current.copy(position);
+                earthPositionRef.current.copy(finalPosition);
             }
             if (focusState?.definition.name === definition.name) {
-                focusPositionRef.current.copy(position);
+                focusPositionRef.current.copy(finalPosition);
             }
         },
-        [focusState, totalPlanets],
+        [focusState, totalPlanets, astronomicalPositions],
     );
 
     const handleAsteroidSelect = useCallback((definition: AsteroidDefinition, position: VectorTuple) => {
+        focusPositionRef.current.set(position[0], position[1], position[2]);
         setSelectedAsteroid(definition);
-        setFocusState(null);
+        setFocusState({ definition, type: 'asteroid' });
     }, []);
 
     const handleAsteroidPositionUpdate = useCallback(
         (definition: AsteroidDefinition, position: Vector3) => {
-            // Optional: track asteroid positions if needed
+            const store = asteroidPositionsRef.current;
+            const existing = store[definition.name];
+            if (existing) {
+                existing.copy(position);
+            } else {
+                store[definition.name] = position.clone();
+            }
+            if (selectedAsteroid?.name === definition.name && focusState?.type === 'asteroid') {
+                focusPositionRef.current.copy(position);
+            }
         },
-        [],
+        [focusState, selectedAsteroid],
     );
 
     const planetOptions = [earthDefinition, ...planetDefinitions];
@@ -1001,15 +1094,6 @@ const SimulationViewport = ({ params, controlPanelOpen: externalControlPanelOpen
         handlePlanetSelect(definition, [storedPosition.x, storedPosition.y, storedPosition.z]);
     };
 
-    const handleFocusPositionChange = useCallback(
-        (definition: PlanetDefinition, position: Vector3) => {
-            if (focusState?.definition.name === definition.name) {
-                focusPositionRef.current.copy(position);
-            }
-        },
-        [focusState],
-    );
-
     const handleResetFocus = useCallback(() => {
         setFocusState(null);
         focusPositionRef.current.set(0, 0, 0);
@@ -1020,13 +1104,25 @@ const SimulationViewport = ({ params, controlPanelOpen: externalControlPanelOpen
         controlsRef.current.enablePan = !focusState;
     }, [focusState]);
 
-    const selectedBody = focusState?.definition ?? null;
+    const selectedBody = focusState?.type === 'planet' ? (focusState.definition as PlanetDefinition) : null;
     const defaultParamsSnapshot = planetParamsRef.current[DEFAULT_TARGET_KEY] ?? latestParamsRef.current;
     const moonControlParams = focusState ? defaultParamsSnapshot : params;
     const selectedPlanetParams = selectedBody ? (planetParamsRef.current[selectedBody.name] ?? params) : null;
 
     return (
         <section className="relative h-screen w-full overflow-hidden bg-black">
+            {/* API Loading/Error Indicators */}
+            {apiLoading && (
+                <div className="absolute top-6 left-1/2 z-40 -translate-x-1/2 rounded-lg border border-[#2E96F5]/40 bg-[#041032]/90 px-4 py-2 text-sm text-white backdrop-blur-xl">
+                    Chargement des positions astronomiques...
+                </div>
+            )}
+            {apiError && (
+                <div className="absolute top-6 left-1/2 z-40 -translate-x-1/2 rounded-lg border border-red-500/40 bg-red-950/90 px-4 py-2 text-sm text-red-200 backdrop-blur-xl">
+                    Erreur API: {apiError} - Utilisation des positions simulées
+                </div>
+            )}
+
             <div className="relative z-10 h-full">
                 <Canvas
                     className="bg-black"
@@ -1074,17 +1170,17 @@ const SimulationViewport = ({ params, controlPanelOpen: externalControlPanelOpen
                             <Planet
                                 key={planet.name}
                                 definition={planet}
-                                isSelected={focusState?.definition.name === planet.name}
+                                isSelected={focusState?.type === 'planet' && focusState.definition.name === planet.name}
                                 onSelect={handlePlanetSelect}
                                 onPositionChange={handlePlanetPositionUpdate}
-                                activeParams={focusState?.definition.name === planet.name ? selectedPlanetParams : null}
+                                activeParams={focusState?.type === 'planet' && focusState.definition.name === planet.name ? selectedPlanetParams : null}
                             />
                         ))}
                     </group>
                     <Earth
                         definition={earthDefinition}
-                        isSelected={focusState?.definition.name === earthDefinition.name}
-                        activeParams={focusState?.definition.name === earthDefinition.name ? selectedPlanetParams : null}
+                        isSelected={focusState?.type === 'planet' && focusState.definition.name === earthDefinition.name}
+                        activeParams={focusState?.type === 'planet' && focusState.definition.name === earthDefinition.name ? selectedPlanetParams : null}
                         onSelect={handlePlanetSelect}
                         onPositionChange={handlePlanetPositionUpdate}
                     />
@@ -1113,13 +1209,13 @@ const SimulationViewport = ({ params, controlPanelOpen: externalControlPanelOpen
             <div className="absolute bottom-4 left-6 z-30 flex gap-3">
                 <button
                     onClick={() => setControlPanelOpen(!controlPanelOpen)}
-                    className="rounded-xl border border-white/15 bg-[#eafe07]/90 px-4 py-2 text-sm font-semibold uppercase text-black shadow-lg backdrop-blur-xl transition-all duration-300 hover:bg-[#eafe07] hover:scale-105"
+                    className="rounded-xl border border-white/15 bg-[#c026d3]/90 px-4 py-2 text-sm font-semibold uppercase text-white shadow-lg backdrop-blur-xl transition-all duration-300 hover:bg-[#c026d3] hover:scale-105"
                 >
                     {controlPanelOpen ? 'Masquer Réglages' : 'Ouvrir Réglages'}
                 </button>
                 <button
                     onClick={() => setSynthesisOpen(!synthesisOpen)}
-                    className="rounded-xl border border-white/15 bg-[#2E96F5]/90 px-4 py-2 text-sm font-semibold uppercase text-white shadow-lg backdrop-blur-xl transition-all duration-300 hover:bg-[#eafe07] hover:text-black"
+                    className="rounded-xl border border-white/15 bg-[#2E96F5]/90 px-4 py-2 text-sm font-semibold uppercase text-white shadow-lg backdrop-blur-xl transition-all duration-300 hover:bg-[#c026d3] hover:text-white"
                 >
                     {synthesisOpen ? 'Masquer Synthèse' : 'Afficher Synthèse'}
                 </button>
@@ -1133,6 +1229,12 @@ const SimulationViewport = ({ params, controlPanelOpen: externalControlPanelOpen
                 <div className="pointer-events-none absolute -left-12 -top-16 h-48 w-48 rounded-full bg-[#2E96F5]/35 blur-3xl" />
                 <div className="relative z-10 w-full rounded-[1.8rem] p-4 text-sm text-[#E6ECFF]">
                     <h2 className="text-base font-semibold text-[#2E96F5]">Synthèse rapide</h2>
+                    {astronomyData && (
+                        <div className="mt-2 text-xs text-[#A8B9FF]">
+                            <p>Données astronomiques en temps réel</p>
+                            <p className="text-[0.65rem]">Calculé pour: {astronomyData.time_info.local_time_display}</p>
+                        </div>
+                    )}
                     <div className="mt-3 flex flex-col gap-1 text-xs text-[#A8B9FF]">
                         <label className="font-semibold uppercase tracking-wide text-[#2E96F5]">
                             Cibler une planète
@@ -1141,7 +1243,7 @@ const SimulationViewport = ({ params, controlPanelOpen: externalControlPanelOpen
                             value={selectedBody?.name ?? ''}
                             onChange={handleMenuPlanetSelect}
                             disabled={!positionsReady}
-                            className="rounded-lg border border-[#2E96F5]/40 bg-[#041032]/80 px-3 py-2 text-white focus:border-[#eafe07] focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                            className="rounded-lg border border-[#2E96F5]/40 bg-[#041032]/80 px-3 py-2 text-white focus:border-[#c026d3] focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
                         >
                             <option value="">Aucune sélection</option>
                             {planetOptions.map((planet) => (
@@ -1152,7 +1254,7 @@ const SimulationViewport = ({ params, controlPanelOpen: externalControlPanelOpen
                         </select>
                     </div>
                     <p className="mt-2 text-xs text-[#A8B9FF]">
-                        Projection du système et suivi temps réel des paramètres. Cliquez sur une planète pour centrer la vue, appliquer les réglages et obtenir ses indicateurs orbitaux.
+                        Projection du système et suivi temps réel des paramètres. Cliquez sur une planète {focusState?.type === 'asteroid' ? 'ou astéroïde' : ''} pour centrer la vue, appliquer les réglages et obtenir ses indicateurs orbitaux.
                     </p>
                     <p className="mt-3 text-[0.7rem] leading-relaxed text-[#A8B9FF]">
                         Les curseurs du panneau contrôlent la planète suivie ; sans sélection, ils pilotent l'objet de mission par défaut.
@@ -1160,46 +1262,46 @@ const SimulationViewport = ({ params, controlPanelOpen: externalControlPanelOpen
                     <div className="mt-4 grid grid-cols-2 gap-4 text-xs">
                         <div className="col-span-2 rounded-xl border border-[#2E96F5]/25 bg-[#07173F]/70 p-2.5">
                             <p className="text-[#A8B9FF]">Planète suivie</p>
-                            <p className="text-lg font-semibold text-[#eafe07]">{selectedBody ? selectedBody.name : 'Aucune'}</p>
+                            <p className="text-lg font-semibold text-[#c026d3]">{selectedBody ? selectedBody.name : (selectedAsteroid ? selectedAsteroid.name : 'Aucune')}</p>
                             <p className="mt-2 text-[0.7rem] leading-relaxed text-[#A8B9FF]">
                                 {selectedBody
                                     ? selectedBody.summary
-                                    : 'Cliquez sur une planète pour zoomer, ajuster la caméra et analyser sa trajectoire par rapport à votre scénario.'}
+                                    : (selectedAsteroid ? `Astéroïde ${selectedAsteroid.name} de la ceinture principale` : 'Cliquez sur une planète pour zoomer, ajuster la caméra et analyser sa trajectoire par rapport à votre scénario.')}
                             </p>
                         </div>
                         <div className="rounded-xl border border-[#2E96F5]/25 bg-[#07173F]/70 p-2.5">
                             <p className="text-[#A8B9FF]">Vitesse actuelle</p>
-                            <p className="text-lg font-semibold text-[#eafe07]">{decimalFormatter.format(params.velocity)} km/s</p>
+                            <p className="text-lg font-semibold text-[#c026d3]">{decimalFormatter.format(params.velocity)} km/s</p>
                         </div>
                         <div className="rounded-xl border border-[#2E96F5]/25 bg-[#07173F]/70 p-2.5">
                             <p className="text-[#A8B9FF]">Inclinaison</p>
-                            <p className="text-lg font-semibold text-[#eafe07]">{decimalFormatter.format(params.angle)}°</p>
+                            <p className="text-lg font-semibold text-[#c026d3]">{decimalFormatter.format(params.angle)}°</p>
                         </div>
                         <div className="rounded-xl border border-[#2E96F5]/25 bg-[#07173F]/70 p-2.5">
                             <p className="text-[#A8B9FF]">Masse</p>
-                            <p className="text-lg font-semibold text-[#eafe07]">{decimalFormatter.format(params.mass)} ×10¹² kg</p>
+                            <p className="text-lg font-semibold text-[#c026d3]">{decimalFormatter.format(params.mass)} ×10¹² kg</p>
                         </div>
                         <div className="rounded-xl border border-[#2E96F5]/25 bg-[#07173F]/70 p-2.5">
                             <p className="text-[#A8B9FF]">Rayon</p>
-                            <p className="text-lg font-semibold text-[#eafe07]">{decimalFormatter.format(params.radius)} km</p>
+                            <p className="text-lg font-semibold text-[#c026d3]">{decimalFormatter.format(params.radius)} km</p>
                         </div>
                         {selectedBody ? (
                             <>
                                 <div className="rounded-xl border border-[#2E96F5]/25 bg-[#07173F]/70 p-2.5">
                                     <p className="text-[#A8B9FF]">Distance orbitale moyenne</p>
-                                    <p className="text-lg font-semibold text-[#eafe07]">
+                                    <p className="text-lg font-semibold text-[#c026d3]">
                                         {distanceFormatter.format(selectedBody.distanceAu)} AU
                                     </p>
                                 </div>
                                 <div className="rounded-xl border border-[#2E96F5]/25 bg-[#07173F]/70 p-2.5">
                                     <p className="text-[#A8B9FF]">Excentricité</p>
-                                    <p className="text-lg font-semibold text-[#eafe07]">
+                                    <p className="text-lg font-semibold text-[#c026d3]">
                                         {orbitalDetailFormatter.format(selectedBody.orbit.eccentricity)}
                                     </p>
                                 </div>
                                 <div className="col-span-2 rounded-xl border border-[#2E96F5]/25 bg-[#07173F]/70 p-2.5">
                                     <p className="text-[#A8B9FF]">Inclinaison orbitale</p>
-                                    <p className="text-lg font-semibold text-[#eafe07]">
+                                    <p className="text-lg font-semibold text-[#c026d3]">
                                         {orbitalDetailFormatter.format(selectedBody.inclinationDegrees)}°
                                     </p>
                                 </div>
