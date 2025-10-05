@@ -43,7 +43,7 @@ function init() {
   planet_sun = loadPlanetTexture("/Space/img/sun_hd.jpg", 3.5, 100, 100, 'basic');
   scene.add(planet_sun);
 
-  const sunLight = new THREE.PointLight(0xffffff, 2, 3000);
+  const sunLight = new THREE.PointLight(0xffffff, 0.7, 3000);
   sunLight.position.copy(planet_sun.position);
   scene.add(sunLight);
 
