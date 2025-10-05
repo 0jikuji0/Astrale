@@ -16,20 +16,20 @@ const scale = 650 / 30.069;
 /* -----------------------------------------------------
    Facteur d'exagération pour inclinaisons
 ------------------------------------------------------ */
-const exaggeration = 3; // ajuster pour rendre inclinaisons visibles
+const exaggeration = 3;
 
 /* -----------------------------------------------------
    Données planètes avec excentricité et inclinaison
 ------------------------------------------------------ */
 const orbitData = [
-  { name: 'Mercure', texture: '/tests/img/mercury_hd.jpg', radius: 1.5, a: 0.387 * scale, e: 0.2056, speed: 4.15, color: 0x888888, tilt: 7.0 },
-  { name: 'Vénus',   texture: '/tests/img/venus_hd.jpg',   radius: 2.5, a: 0.723 * scale, e: 0.0068, speed: 1.62, color: 0xffff00, tilt: 3.4 },
-  { name: 'Terre',   texture: '/tests/img/earth_hd.jpg',   radius: 3,   a: 1.000 * scale, e: 0.0167, speed: 1.00, color: 0x0000ff, tilt: 0.0 },
-  { name: 'Mars',    texture: '/tests/img/mars_hd.jpg',    radius: 2,   a: 1.524 * scale, e: 0.0934, speed: 0.53, color: 0xff0000, tilt: 1.85 },
-  { name: 'Jupiter', texture: '/tests/img/jupiter_hd.jpg', radius: 8,   a: 5.203 * scale, e: 0.0484, speed: 0.08, color: 0xffa500, tilt: 1.3 },
-  { name: 'Saturne', texture: '/tests/img/saturn_hd.jpg',  radius: 7,   a: 9.537 * scale, e: 0.0541, speed: 0.03, color: 0xffd700, tilt: 2.49 },
-  { name: 'Uranus',  texture: '/tests/img/uranus_hd.jpg',  radius: 5,   a: 19.191 * scale, e: 0.0472, speed: 0.011, color: 0x00ffff, tilt: 0.77 },
-  { name: 'Neptune', texture: '/tests/img/neptune_hd.jpg', radius: 4,   a: 30.069 * scale, e: 0.0086, speed: 0.006, color: 0x00008b, tilt: 1.77 },
+  { name: 'Mercure', texture: '/Space/img/mercury_hd.jpg', radius: 1.5, a: 0.387 * scale, e: 0.2056, speed: 4.15, color: 0x888888, tilt: 7.0 },
+  { name: 'Vénus',   texture: '/Space/img/venus_hd.jpg',   radius: 2.5, a: 0.723 * scale, e: 0.0068, speed: 1.62, color: 0xffff00, tilt: 3.4 },
+  { name: 'Terre',   texture: '/Space/img/earth_hd.jpg',   radius: 3,   a: 1.000 * scale, e: 0.0167, speed: 1.00, color: 0x0000ff, tilt: 0.0 },
+  { name: 'Mars',    texture: '/Space/img/mars_hd.jpg',    radius: 2,   a: 1.524 * scale, e: 0.0934, speed: 0.53, color: 0xff0000, tilt: 1.85 },
+  { name: 'Jupiter', texture: '/Space/img/jupiter_hd.jpg', radius: 8,   a: 5.203 * scale, e: 0.0484, speed: 0.08, color: 0xffa500, tilt: 1.3 },
+  { name: 'Saturne', texture: '/Space/img/saturn_hd.jpg',  radius: 7,   a: 9.537 * scale, e: 0.0541, speed: 0.03, color: 0xffd700, tilt: 2.49 },
+  { name: 'Uranus',  texture: '/Space/img/uranus_hd.jpg',  radius: 5,   a: 19.191 * scale, e: 0.0472, speed: 0.011, color: 0x00ffff, tilt: 0.77 },
+  { name: 'Neptune', texture: '/Space/img/neptune_hd.jpg', radius: 4,   a: 30.069 * scale, e: 0.0086, speed: 0.006, color: 0x00008b, tilt: 1.77 },
 ];
 
 /* -----------------------------------------------------
@@ -39,23 +39,23 @@ function init() {
   scene = new THREE.Scene();
   createStarsBackground();
 
-  // 🌞 Soleil
-  planet_sun = loadPlanetTexture("/tests/img/sun_hd.jpg", 3.5, 100, 100, 'basic');
+  // Soleil
+  planet_sun = loadPlanetTexture("/Space/img/sun_hd.jpg", 3.5, 100, 100, 'basic');
   scene.add(planet_sun);
 
   const sunLight = new THREE.PointLight(0xffffff, 2, 3000);
   sunLight.position.copy(planet_sun.position);
   scene.add(sunLight);
 
-  // 🪐 Planètes et orbites elliptiques inclinées
+  // Planètes et orbites
   orbitData.forEach((p) => {
     const mesh = loadPlanetTexture(p.texture, p.radius, 64, 64, 'standard');
     mesh.material.roughness = 1;
     mesh.material.metalness = 0;
+    mesh.userData.name = p.name; // 🔹 on stocke le nom dans userData
     scene.add(mesh);
     planets.push({ mesh, a: p.a, e: p.e, speed: p.speed, tilt: p.tilt });
 
-    // Génération orbite elliptique
     const points = [];
     const b = p.a * Math.sqrt(1 - p.e * p.e);
     for (let i = 0; i <= 128; i++) {
@@ -67,8 +67,6 @@ function init() {
     const orbitGeom = new THREE.BufferGeometry().setFromPoints(points);
     const orbitMat = new THREE.LineBasicMaterial({ color: p.color, transparent: true, opacity: 0.6 });
     const orbitLine = new THREE.LineLoop(orbitGeom, orbitMat);
-
-    // Inclinaison orbitale exagérée
     orbitLine.rotation.x = THREE.MathUtils.degToRad(p.tilt * exaggeration);
     scene.add(orbitLine);
   });
@@ -76,13 +74,11 @@ function init() {
   createSolarParticles();
   createSolarArcs();
 
-  // 🎥 Caméra
   camera = new THREE.PerspectiveCamera(85, window.innerWidth / window.innerHeight, 1.5, 50000);
   const jupiterOrbit = 5.203 * scale;
   camera.position.set(jupiterOrbit * 1.1, 50, jupiterOrbit * 0.5);
   camera.lookAt(planet_sun.position);
 
-  // 🚀 Rendu + Bloom
   renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(renderer.domElement);
@@ -93,7 +89,6 @@ function init() {
   composer.addPass(renderScene);
   composer.addPass(bloomPass);
 
-  // 🌀 Contrôles
   controls = new OrbitControls(camera, renderer.domElement);
   controls.target.copy(planet_sun.position);
   controls.minDistance = 5;
@@ -102,6 +97,7 @@ function init() {
   controls.dampingFactor = 0.05;
 
   window.addEventListener("resize", onWindowResize);
+  window.addEventListener("click", onClick); // 🔹 écouteur pour clic sur planète
 }
 
 /* -----------------------------------------------------
@@ -140,7 +136,7 @@ function loadPlanetTexture(texture, radius, widthSegments, heightSegments, meshT
 }
 
 /* -----------------------------------------------------
-   Particules solaires rapprochées
+   Particules solaires
 ------------------------------------------------------ */
 function createSolarParticles() {
   const particleCount = 500;
@@ -201,22 +197,47 @@ function createSolarArcs() {
 }
 
 /* -----------------------------------------------------
-   Orbites elliptiques avec inclinaison exagérée
+   Mouvement des planètes
 ------------------------------------------------------ */
 function planetRevolver(time) {
-  const speedMultiplier = 0.0005;
+  const speedMultiplier = 0.2;
   planets.forEach((p) => {
     const angle = time * speedMultiplier * p.speed;
-    const tiltRad = THREE.MathUtils.degToRad(p.tilt * exaggeration);
-
     const b = p.a * Math.sqrt(1 - p.e * p.e);
     const x = p.a * Math.cos(angle) - p.a * p.e;
     const z = b * Math.sin(angle);
-    const y = z * Math.sin(tiltRad);
-    const zRot = z * Math.cos(tiltRad);
 
-    p.mesh.position.set(x, y, zRot);
+    const pos = new THREE.Vector3(x, 0, z);
+
+    const tiltRad = THREE.MathUtils.degToRad(p.tilt * exaggeration);
+    const quaternion = new THREE.Quaternion();
+    quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, 0), tiltRad);
+    pos.applyQuaternion(quaternion);
+
+    p.mesh.position.copy(pos);
+    p.mesh.rotation.y += 0.01 * p.speed;
   });
+}
+
+/* -----------------------------------------------------
+   🎯 Clic sur une planète (redirige si Terre)
+------------------------------------------------------ */
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+function onClick(event) {
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+
+  const intersects = raycaster.intersectObjects(planets.map(p => p.mesh));
+
+  if (intersects.length > 0) {
+    const clicked = intersects[0].object;
+    if (clicked.userData.name === "Terre") {
+      window.location.href = "/Earth"; // 🔹 Redirection
+    }
+  }
 }
 
 /* -----------------------------------------------------
@@ -224,12 +245,16 @@ function planetRevolver(time) {
 ------------------------------------------------------ */
 function animate(time) {
   requestAnimationFrame(animate);
+  time *= 0.001;
+
   planet_sun.rotation.y += 0.002;
   planetRevolver(time);
+
   arcs.forEach((arc, i) => {
-    const scale = 1 + 0.02 * Math.sin(time * 0.002 + i);
+    const scale = 1 + 0.02 * Math.sin(time * 2 + i);
     arc.scale.set(scale, scale, scale);
   });
+
   composer.render();
   controls.update();
 }
