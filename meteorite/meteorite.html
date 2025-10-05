@@ -22,47 +22,9 @@ label { display:block; margin:6px 0 2px; font-size:14px; }
 input { width:100%; }
 button { margin-top:8px; padding:6px 12px; font-size:14px; width:100%; }
 
-.label {
-  font-size: 14px;
-  color: yellow;
-  background: rgba(0,0,0,0.7);
-  padding: 4px 8px;
-  border-radius: 6px;
-  white-space: nowrap;
-  position: absolute;
-}
+#sizeValue, #speedValue { font-size: 13px; display: inline-block; margin-top:-4px; }
 
-/* --- Sliders --- */
-input[type="range"] {
-  width: 100%;
-  margin-bottom: 4px;
-}
-
-/* --- Boutons --- */
-button {
-  padding: 6px 12px;
-  font-size: 14px;
-  cursor: pointer;
-  border: none;
-  border-radius: 6px;
-  background: #222;
-  color: #fff;
-  transition: background 0.2s;
-}
-button:hover {
-  background: #555;
-}
-
-/* --- Valeurs affichées à côté des sliders --- */
-#sizeValue, #speedValue {
-  font-size: 13px;
-  display: inline-block;
-  margin-top: -4px;
-  margin-bottom: 4px;
-}
-
-/* --- Distance affichée --- */
-#distanceValue {
+#distanceDisplay {
   position: absolute;
   top: 10px;
   right: 10px;
@@ -72,17 +34,6 @@ button:hover {
   font-size: 14px;
   z-index: 20;
   white-space: nowrap;
-}
-
-/* --- Champs position / vitesse --- */
-#initialValues label {
-  font-size: 13px;
-  margin-top: 4px;
-}
-#initialValues input {
-  width: 60px;
-  display:inline-block;
-  margin-right: 4px;
 }
 
 </style>
@@ -101,26 +52,14 @@ button:hover {
   <input id="speedRange" type="range" min="1" max="70" value="10">
   <span id="speedValue">10 km/s</span>
 
-  <div id="initialValues">
-    <label>Position initiale (km)</label>
-    X: <input id="posX" type="number" value="200">
-    Y: <input id="posY" type="number" value="50">
-    Z: <input id="posZ" type="number" value="600">
-
-    <label>Vitesse initiale (km/s)</label>
-    VX: <input id="velX" type="number" value="0">
-    VY: <input id="velY" type="number" value="0">
-    VZ: <input id="velZ" type="number" value="-10">
-
-    <button id="computeBtn">Calculer trajectoire</button>
-  </div>
+  <button id="btnGeneral">Vue générale</button>
+  <button id="btnPOV">Vue POV</button>
 </div>
 
-<div>
+<div id="distanceDisplay">
   Distance à la Terre : <span id="distanceValue">0 km</span>
 </div>
 
 <script type="module" src="meteorite.js"></script>
 </body>
 </html>
-  
