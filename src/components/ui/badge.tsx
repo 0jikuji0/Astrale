@@ -3,7 +3,7 @@ import clsx from "clsx";
 
 export type BadgeVariant = "solid" | "outline" | "subtle";
 
-export type BadgeColor = "transparent" | "purple" | "blue" | "green" | "red";
+export type BadgeColor = "transparent" | "yellow" | "blue" | "red";
 
 export interface BadgeProps {
   children?: React.ReactNode;
@@ -29,19 +29,14 @@ const colorMap: Record<BadgeColor, Record<BadgeVariant, string>> = {
     subtle: "bg-gray-100",
   },
   blue: {
-    solid: "bg-blue-500",
+    solid: "bg-[#2E96F5]",
     outline: "border-blue-500 text-blue-500",
     subtle: "bg-blue-100 text-blue-800",
   },
-  purple: {
-    solid: "bg-purple-500",
-    outline: "border-purple-500 text-purple-500",
-    subtle: "bg-purple-100 text-purple-800",
-  },
-  green: {
-    solid: "bg-green-500",
-    outline: "border-green-500 text-green-500",
-    subtle: "bg-green-100 text-green-800",
+  yellow: {
+    solid: "bg-[#EAFE07]",
+    outline: "border-[#EAFE07] text-[#EAFE07]",
+    subtle: "bg-[#EAFE07] text-black",
   },
   red: {
     solid: "bg-red-500",
