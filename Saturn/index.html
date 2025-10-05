@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Saturn</title>
+    <style>
+      body {
+        margin: 0;
+        background: #000; /* fond sombre pour bien voir l’effet */
+        font-family: Arial, sans-serif;
+      }
+
+      /* --- Bouton Retour --- */
+      .back-button {
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        padding: 10px 20px;
+        border-radius: 15px;
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        color: white;
+        font-size: 16px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+      }
+
+      .back-button:hover {
+        background: rgba(255, 255, 255, 0.2);
+        transform: scale(1.05);
+      }
+
+      /* --- Texte "following / Earth" --- */
+      .side-text {
+        position: fixed;
+        top: 50%;
+        left: 40px;
+        transform: translateY(-50%);
+        color: white;
+        text-align: left;
+        user-select: none;
+      }
+
+      .side-text span {
+        display: block;
+        font-size: 12px;
+        letter-spacing: 2px;
+        color: rgba(255, 255, 255, 0.7);
+        text-transform: uppercase;
+      }
+
+      .side-text h1 {
+        margin: 4px 0 0;
+        font-size: 24px;
+        font-weight: 500;
+        color: rgba(255, 255, 255, 0.9);
+      }
+    </style>
+
+    <!-- <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.161/build/three.module.js",
+          "jsm/": "https://cdn.jsdelivr.net/npm/three@0.161/examples/jsm/"
+        }
+      }
+    </script> -->
+  </head>
+
+  <body>
+    <!-- Bouton retour -->
+    <a href="/Space" class="back-button">⟵ Retour</a>
+
+    <!-- Texte gauche centré -->
+    <div class="side-text">
+      <span>following</span>
+      <h1>Saturn</h1>
+    </div>
+
+    <script type="module" src="index.js"></script>
+  </body>
+</html>

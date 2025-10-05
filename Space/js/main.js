@@ -28,8 +28,8 @@ const orbitData = [
   { name: 'Mars',    texture: '/Space/img/mars_hd.jpg',    radius: 2,   a: 1.524 * scale, e: 0.0934, speed: 0.53, color: 0xff0000, tilt: 1.85 },
   { name: 'Jupiter', texture: '/Space/img/jupiter_hd.jpg', radius: 8,   a: 5.203 * scale, e: 0.0484, speed: 0.08, color: 0xffa500, tilt: 1.3 },
   { name: 'Saturne', texture: '/Space/img/saturn_hd.jpg',  radius: 7,   a: 9.537 * scale, e: 0.0541, speed: 0.03, color: 0xffd700, tilt: 2.49 },
-  { name: 'Uranus',  texture: '/Space/img/uranus_hd.jpg',  radius: 5,   a: 19.191 * scale, e: 0.0472, speed: 0.011, color: 0x00ffff, tilt: 0.77 },
-  { name: 'Neptune', texture: '/Space/img/neptune_hd.jpg', radius: 4,   a: 30.069 * scale, e: 0.0086, speed: 0.006, color: 0x00008b, tilt: 1.77 },
+  { name: 'Uranus',  texture: '/Space/img/uranus_hd.jpg',  radius: 7,   a: 19.191 * scale, e: 0.0472, speed: 0.011, color: 0x00ffff, tilt: 0.77 },
+  { name: 'Neptune', texture: '/Space/img/neptune_hd.jpg', radius: 8,   a: 30.069 * scale, e: 0.0086, speed: 0.006, color: 0x00008b, tilt: 1.77 },
 ];
 
 /* -----------------------------------------------------
@@ -52,10 +52,22 @@ function init() {
     const mesh = loadPlanetTexture(p.texture, p.radius, 64, 64, 'standard');
     mesh.material.roughness = 1;
     mesh.material.metalness = 0;
-    mesh.userData.name = p.name; // 🔹 on stocke le nom dans userData
+    mesh.userData.name = p.name;
     scene.add(mesh);
-    planets.push({ mesh, a: p.a, e: p.e, speed: p.speed, tilt: p.tilt });
 
+    const planet = { mesh, a: p.a, e: p.e, speed: p.speed, tilt: p.tilt };
+
+    // 🔹 Ajout des anneaux uniquement pour Saturne
+    if (p.name === "Saturne") {
+      const ring = createSaturnRings(p.radius);
+      mesh.add(ring);
+      ring.rotation.x = THREE.MathUtils.degToRad(90 - p.tilt); // légère inclinaison
+      planet.rings = ring;
+    }
+
+    planets.push(planet);
+
+    // 🔹 Dessin de l’orbite elliptique
     const points = [];
     const b = p.a * Math.sqrt(1 - p.e * p.e);
     for (let i = 0; i <= 128; i++) {
@@ -99,6 +111,50 @@ function init() {
   window.addEventListener("resize", onWindowResize);
   window.addEventListener("click", onClick);
 }
+
+/* -----------------------------------------------------
+   Anneaux de Saturne
+------------------------------------------------------ */
+function createSaturnRings(planetRadius) {
+  const innerRadius = planetRadius * 1.4;
+  const outerRadius = planetRadius * 2.8;
+
+  // Géométrie de l’anneau
+  const geometry = new THREE.RingGeometry(innerRadius, outerRadius, 128);
+
+  // Chargement de la texture
+  const loader = new THREE.TextureLoader();
+  const texture = loader.load(
+    "/Space/img/saturn_ring.png",
+    () => console.log("✅ Texture des anneaux chargée !"),
+    undefined,
+    (err) => console.error("❌ Erreur de chargement texture :", err)
+  );
+
+  texture.encoding = THREE.sRGBEncoding;
+  texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
+
+  // ✅ Matériau idéal pour les anneaux (toujours visibles)
+  const material = new THREE.MeshBasicMaterial({
+    map: texture,
+    transparent: true,
+    alphaTest: 0.05,     // ignore les pixels totalement transparents
+    side: THREE.DoubleSide,
+  });
+
+  // Création du mesh
+  const ring = new THREE.Mesh(geometry, material);
+
+  // Inclinaison réaliste
+  ring.rotation.x = THREE.MathUtils.degToRad(70);
+
+  // Position : juste au-dessus de Saturne
+  ring.position.set(0, 0.1, 0);
+
+  return ring;
+}
+
+
 
 /* -----------------------------------------------------
    Fond d’étoiles
@@ -220,7 +276,7 @@ function planetRevolver(time) {
 }
 
 /* -----------------------------------------------------
-   🎯 Clic sur une planète (redirige si Terre)
+   🎯 Clic sur une planète (redirige)
 ------------------------------------------------------ */
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
@@ -234,19 +290,29 @@ function onClick(event) {
 
   if (intersects.length > 0) {
     const clicked = intersects[0].object;
-    if (clicked.userData.name === "Terre") {
-      window.location.href = "/Earth";
+    const planetName = clicked.userData.name;
+
+    console.log(`🌍 Vous avez cliqué sur ${planetName}`);
+
+    switch (planetName) {
+      case "Mercure": window.location.href = "/Mercury"; break;
+      case "Vénus":   window.location.href = "/Venus"; break;
+      case "Terre":   window.location.href = "/Earth"; break;
+      case "Mars":    window.location.href = "/Mars"; break;
+      case "Jupiter": window.location.href = "/Jupiter"; break;
+      case "Saturne": window.location.href = "/Saturn"; break;
+      case "Uranus":  window.location.href = "/Uranus"; break;
+      case "Neptune": window.location.href = "/Neptune"; break;
+      default: console.log("Planète non reconnue :", planetName);
     }
   }
 }
 
 /* -----------------------------------------------------
-   Animation avec temps réel
+   Animation
 ------------------------------------------------------ */
 function animate() {
   requestAnimationFrame(animate);
-
-  // ⏱ Temps réel (secondes depuis 1970)
   const now = Date.now() / 1000;
 
   planet_sun.rotation.y = (now * 0.002) % (2 * Math.PI);
