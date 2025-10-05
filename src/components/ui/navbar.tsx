@@ -46,8 +46,7 @@ export default function Navbar() {
 
   const NavLinks = [
     { title: "Home", href: "/" },
-    { title: "Features", href: "/features" },
-    { title: "About", href: "/about" },
+    { title: "Features", href: "/#presentation" },
     { title: "Contact", href: "/contact" },
   ];
   const FastLinks = [
@@ -77,8 +76,8 @@ export default function Navbar() {
       <div
         className={`pointer-events-auto w-full border border-white/10 px-6 transition-all duration-300 ${
           isScrolled
-            ? "max-w-6xl rounded-3xl bg-slate-900/30 supports-[backdrop-filter]:bg-slate-500/30 backdrop-blur-lg py-2 shadow-[0_20px_45px_-20px_rgba(15,23,42,0.85)]"
-            : "max-w-full rounded-none bg-slate-900/70 backdrop-blur-3xl py-3 shadow-[0_14px_30px_-18px_rgba(15,23,42,0.7)]"
+            ? "max-w-6xl rounded-3xl bg-slate-900/30 supports-[backdrop-filter]:bg-slate-500/30 backdrop-blur-lg py-2"
+            : "max-w-full rounded-none bg-slate-900/70 backdrop-blur-3xl py-3"
         }`}
       >
         <div className="flex items-center justify-between gap-4">
@@ -92,7 +91,7 @@ export default function Navbar() {
               <a
                 key={link.href}
                 href={link.href}
-                className="text-white hover:bg-white/20 px-5 py-3 rounded-xl transition-colors duration-300 text-lg"
+                className="text-white hover:bg-fuchsia-400/20 px-5 py-3 rounded-xl transition-colors duration-300 text-lg"
               >
                 {link.title}
               </a>
