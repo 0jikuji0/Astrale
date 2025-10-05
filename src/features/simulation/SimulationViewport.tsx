@@ -8,6 +8,8 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { decimalFormatter } from './formatters';
 import { degToRad } from './utils';
 
+import type { ChangeEvent } from 'react';
+
 import type { MutableRefObject } from 'react';
 
 import type { RootState, ThreeEvent } from '@react-three/fiber';
@@ -15,15 +17,16 @@ import type { Group, Mesh } from 'three';
 import type { SimulationParams } from './types';
 import type { OrbitControls as OrbitControlsImpl } from 'three/examples/jsm/controls/OrbitControls.js';
 
-const DEFAULT_CAMERA_POSITION = new Vector3(0, 28, 120);
+const AU_TO_SCENE_UNITS = 32;
+const DEFAULT_CAMERA_POSITION = new Vector3(7, AU_TO_SCENE_UNITS * 1, AU_TO_SCENE_UNITS * 5);
 const DEFAULT_CAMERA_TARGET = new Vector3(0, 0, 0);
 const ORBIT_SEGMENTS = 240;
 
-const SOLAR_SCALE = 650 / 30.069;
-const ORBIT_SCALE = 1;
 const SPEED_SCALE = 0.12;
 const INCLINATION_MULTIPLIER = 3;
-const EARTH_SEMI_MAJOR_AXIS = SOLAR_SCALE * ORBIT_SCALE;
+const getSemiMajorAxis = (distanceAu: number) => distanceAu * AU_TO_SCENE_UNITS;
+
+const EARTH_SEMI_MAJOR_AXIS = getSemiMajorAxis(1);
 const EARTH_ORBIT_ECCENTRICITY = 0.0167;
 const EARTH_SEMI_MINOR_AXIS = EARTH_SEMI_MAJOR_AXIS * Math.sqrt(1 - EARTH_ORBIT_ECCENTRICITY * EARTH_ORBIT_ECCENTRICITY);
 const EARTH_ORBIT_TILT = degToRad(0 * INCLINATION_MULTIPLIER);
@@ -32,6 +35,18 @@ const EARTH_ROTATION_SPEED = 0.25;
 const EARTH_RADIUS = 1.6;
 const EARTH_VERTICAL_OFFSET = 0;
 
+const STARS_CONFIG = {
+    radius: 100,
+    depth: 50,
+    count: 5000,
+    factor: 4,
+    saturation: 0,
+    fade: true,
+    speed: 1,
+} as const;
+
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
 const orbitalDetailFormatter = new Intl.NumberFormat('fr-FR', {
     maximumFractionDigits: 2,
 });
@@ -39,6 +54,13 @@ const orbitalDetailFormatter = new Intl.NumberFormat('fr-FR', {
 const distanceFormatter = new Intl.NumberFormat('fr-FR', {
     maximumFractionDigits: 2,
 });
+const SELECTED_PLANET_EVENT = 'simulation:selected-planet-change';
+const UPDATE_PLANET_PARAMS_EVENT = 'simulation:update-planet-params';
+const DEFAULT_TARGET_KEY = '__default__';
+type SelectedPlanetEventDetail = {
+    planetName: string | null;
+    params: SimulationParams;
+};
 
 type OrbitParameters = {
     semiMajorAxis: number;
@@ -70,6 +92,22 @@ type PlanetDefinition = {
     rings?: PlanetRingDefinition;
 };
 
+type AsteroidComposition = {
+    roche: number;
+    glace: number;
+    fer: number;
+    nickel?: number;
+    silicate?: number;
+};
+
+type AsteroidDefinition = {
+    name: string;
+    scale: number;
+    color: string;
+    composition: AsteroidComposition;
+    orbit: OrbitParameters;
+};
+
 type VectorTuple = [number, number, number];
 
 type FocusState = {
@@ -87,7 +125,7 @@ const planetDefinitions: ReadonlyArray<PlanetDefinition> = [
         distanceAu: 0.387,
         inclinationDegrees: 7,
         orbit: {
-            semiMajorAxis: 0.387 * SOLAR_SCALE * ORBIT_SCALE,
+            semiMajorAxis: getSemiMajorAxis(0.387),
             eccentricity: 0.2056,
             inclination: degToRad(7 * INCLINATION_MULTIPLIER),
             speed: 4.15 * SPEED_SCALE,
@@ -104,7 +142,7 @@ const planetDefinitions: ReadonlyArray<PlanetDefinition> = [
         distanceAu: 0.723,
         inclinationDegrees: 3.4,
         orbit: {
-            semiMajorAxis: 0.723 * SOLAR_SCALE * ORBIT_SCALE,
+            semiMajorAxis: getSemiMajorAxis(0.723),
             eccentricity: 0.0068,
             inclination: degToRad(3.4 * INCLINATION_MULTIPLIER),
             speed: 1.62 * SPEED_SCALE,
@@ -121,7 +159,7 @@ const planetDefinitions: ReadonlyArray<PlanetDefinition> = [
         distanceAu: 1.524,
         inclinationDegrees: 1.85,
         orbit: {
-            semiMajorAxis: 1.524 * SOLAR_SCALE * ORBIT_SCALE,
+            semiMajorAxis: getSemiMajorAxis(1.524),
             eccentricity: 0.0934,
             inclination: degToRad(1.85 * INCLINATION_MULTIPLIER),
             speed: 0.53 * SPEED_SCALE,
@@ -138,7 +176,7 @@ const planetDefinitions: ReadonlyArray<PlanetDefinition> = [
         distanceAu: 5.203,
         inclinationDegrees: 1.3,
         orbit: {
-            semiMajorAxis: 5.203 * SOLAR_SCALE * ORBIT_SCALE,
+            semiMajorAxis: getSemiMajorAxis(5.203),
             eccentricity: 0.0484,
             inclination: degToRad(1.3 * INCLINATION_MULTIPLIER),
             speed: 0.08 * SPEED_SCALE,
@@ -155,7 +193,7 @@ const planetDefinitions: ReadonlyArray<PlanetDefinition> = [
         distanceAu: 9.537,
         inclinationDegrees: 2.49,
         orbit: {
-            semiMajorAxis: 9.537 * SOLAR_SCALE * ORBIT_SCALE,
+            semiMajorAxis: getSemiMajorAxis(9.537),
             eccentricity: 0.0541,
             inclination: degToRad(2.49 * INCLINATION_MULTIPLIER),
             speed: 0.03 * SPEED_SCALE,
@@ -178,7 +216,7 @@ const planetDefinitions: ReadonlyArray<PlanetDefinition> = [
         distanceAu: 19.191,
         inclinationDegrees: 0.77,
         orbit: {
-            semiMajorAxis: 19.191 * SOLAR_SCALE * ORBIT_SCALE,
+            semiMajorAxis: getSemiMajorAxis(19.191),
             eccentricity: 0.0472,
             inclination: degToRad(0.77 * INCLINATION_MULTIPLIER),
             speed: 0.011 * SPEED_SCALE,
@@ -195,14 +233,14 @@ const planetDefinitions: ReadonlyArray<PlanetDefinition> = [
     {
         name: 'Neptune',
         texture: '/images/neptune_hd.jpg',
-        scale: 3.4,
+        scale: 9.4,
         rotationSpeed: 0.022,
         color: '#4f79ff',
         summary: 'Dernière géante de glace, balayée par des vents supersoniques.',
         distanceAu: 30.069,
         inclinationDegrees: 1.77,
         orbit: {
-            semiMajorAxis: 30.069 * SOLAR_SCALE * ORBIT_SCALE,
+            semiMajorAxis: getSemiMajorAxis(30.069),
             eccentricity: 0.0086,
             inclination: degToRad(1.77 * INCLINATION_MULTIPLIER),
             speed: 0.006 * SPEED_SCALE,
@@ -211,6 +249,146 @@ const planetDefinitions: ReadonlyArray<PlanetDefinition> = [
     },
 ];
 
+const generateRandomAsteroids = (): AsteroidDefinition[] => {
+    const asteroidNames = [
+        'Cérès', 'Vesta', 'Pallas', 'Hygeia', 'Interamnia',
+        'Europa (ast)', 'Davida', 'Sylvia', 'Cybele', 'Eunomia',
+        'Juno', 'Euphrosyne', 'Hektor', 'Thisbe', 'Bamberga'
+    ];
+
+    return asteroidNames.map((name, index) => {
+        const distanceAu = 2.2 + Math.random() * 1.3; // Asteroid belt: 2.2-3.5 AU
+        const eccentricity = 0.05 + Math.random() * 0.15;
+        const inclinationDegrees = Math.random() * 15;
+
+        // Generate random composition totaling 100%
+        const roche = 30 + Math.random() * 40;
+        const glace = Math.random() * 30;
+        const fer = Math.random() * 25;
+        const remaining = 100 - roche - glace - fer;
+        const nickel = remaining * Math.random();
+        const silicate = remaining - nickel;
+
+        return {
+            name,
+            scale: 0.15 + Math.random() * 0.35,
+            color: '#8B4513',
+            composition: {
+                roche: Math.round(roche),
+                glace: Math.round(glace),
+                fer: Math.round(fer),
+                nickel: Math.round(nickel),
+                silicate: Math.round(silicate),
+            },
+            orbit: {
+                semiMajorAxis: getSemiMajorAxis(distanceAu),
+                eccentricity,
+                inclination: degToRad(inclinationDegrees * INCLINATION_MULTIPLIER),
+                speed: (0.3 + Math.random() * 0.4) * SPEED_SCALE,
+                phase: (Math.PI * 2 * index) / asteroidNames.length,
+            },
+        };
+    });
+};
+
+const asteroidDefinitions = generateRandomAsteroids();
+
+type AsteroidProps = {
+    definition: AsteroidDefinition;
+    isSelected: boolean;
+    onSelect: (definition: AsteroidDefinition, position: VectorTuple) => void;
+    onPositionChange?: (definition: AsteroidDefinition, position: Vector3) => void;
+};
+
+const Asteroid = ({ definition, isSelected, onSelect, onPositionChange }: AsteroidProps) => {
+    const groupRef = useRef<Group>(null);
+    const meshRef = useRef<Mesh>(null);
+    const worldPositionRef = useRef(new Vector3());
+
+    const [hovered, setHovered] = useState(false);
+    useCursor(hovered);
+
+    const orbitQuaternion = useMemo(
+        () => new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), definition.orbit.inclination),
+        [definition.orbit.inclination],
+    );
+
+    const orbitSemiMinor = useMemo(
+        () => definition.orbit.semiMajorAxis * Math.sqrt(1 - definition.orbit.eccentricity * definition.orbit.eccentricity),
+        [definition.orbit.eccentricity, definition.orbit.semiMajorAxis],
+    );
+
+    const orbitPosition = useRef(new Vector3());
+
+    useFrame((state, delta) => {
+        if (!groupRef.current) return;
+        const { semiMajorAxis: a, eccentricity: e, phase } = definition.orbit;
+        const time = state.clock.getElapsedTime();
+        const angle = time * definition.orbit.speed + phase;
+        const x = Math.cos(angle) * a - a * e;
+        const z = Math.sin(angle) * orbitSemiMinor;
+        const position = orbitPosition.current;
+        position.set(x, 0, z).applyQuaternion(orbitQuaternion);
+        groupRef.current.position.copy(position);
+        groupRef.current.getWorldPosition(worldPositionRef.current);
+        if (onPositionChange) {
+            onPositionChange(definition, worldPositionRef.current);
+        }
+
+        if (meshRef.current) {
+            meshRef.current.rotation.x += delta * 0.3;
+            meshRef.current.rotation.y += delta * 0.5;
+        }
+    });
+
+    const handleClick = useCallback(
+        (event: ThreeEvent<MouseEvent>) => {
+            event.stopPropagation();
+            if (!groupRef.current) return;
+            const worldPosition = new Vector3();
+            groupRef.current.getWorldPosition(worldPosition);
+            onSelect(definition, [worldPosition.x, worldPosition.y, worldPosition.z]);
+        },
+        [definition, onSelect],
+    );
+
+    const handlePointerOver = useCallback((event: ThreeEvent<PointerEvent>) => {
+        event.stopPropagation();
+        setHovered(true);
+    }, []);
+
+    const handlePointerOut = useCallback((event: ThreeEvent<PointerEvent>) => {
+        event.stopPropagation();
+        setHovered(false);
+    }, []);
+
+    return (
+        <group>
+            <OrbitPath orbit={definition.orbit} color="#ff0000" />
+            <group ref={groupRef} scale={definition.scale}>
+                <mesh
+                    ref={meshRef}
+                    castShadow
+                    receiveShadow
+                    onClick={handleClick}
+                    onPointerOver={handlePointerOver}
+                    onPointerOut={handlePointerOut}
+                >
+                    <dodecahedronGeometry args={[1, 0]} />
+                    <meshStandardMaterial
+                        color={definition.color}
+                        roughness={0.9}
+                        metalness={0.3}
+                        emissive={definition.color}
+                        emissiveIntensity={isSelected ? 0.4 : 0}
+                    />
+                    {isSelected ? <Edges scale={1.1} color="#ff0000" /> : null}
+                </mesh>
+            </group>
+        </group>
+    );
+};
+
 const SunGlow = () => {
     const sunTexture = useTexture('/images/sun_hd.jpg');
     sunTexture.colorSpace = SRGBColorSpace;
@@ -218,7 +396,14 @@ const SunGlow = () => {
     return (
         <mesh scale={2.4} position={[0, 0, 0]}>
             <sphereGeometry args={[1, 48, 48]} />
-            <meshStandardMaterial map={sunTexture} emissive="#fbe7a7" emissiveIntensity={0.9} />
+            <meshStandardMaterial
+                map={sunTexture}
+                emissive="#f7b955"
+                emissiveIntensity={0.35}
+                metalness={0}
+                roughness={1}
+                toneMapped={false}
+            />
         </mesh>
     );
 };
@@ -293,16 +478,25 @@ type PlanetProps = {
     isSelected: boolean;
     onSelect: (definition: PlanetDefinition, position: VectorTuple) => void;
     onPositionChange?: (definition: PlanetDefinition, position: Vector3) => void;
+    activeParams: SimulationParams | null;
 };
 
-const Planet = ({ definition, isSelected, onSelect, onPositionChange }: PlanetProps) => {
+const Planet = ({ definition, isSelected, onSelect, onPositionChange, activeParams }: PlanetProps) => {
     const groupRef = useRef<Group>(null);
     const meshRef = useRef<Mesh>(null);
     const planetTexture = useTexture(definition.texture);
     planetTexture.colorSpace = SRGBColorSpace;
+    const radiusMultiplier = isSelected && activeParams ? clamp(1 + activeParams.radius * 0.08, 0.4, 4.2) : 1;
+    const speedMultiplier = isSelected && activeParams ? clamp(1 + activeParams.velocity * 0.03, 0.25, 4.5) : 1;
+    const rotationMultiplier = isSelected && activeParams ? clamp(1 + activeParams.mass * 0.005, 0.5, 4.2) : 1;
+    const tiltOffset = isSelected && activeParams ? degToRad(activeParams.angle) * 0.02 : 0;
+    const emissiveIntensity = isSelected && activeParams ? clamp(0.2 + activeParams.mass * 0.01, 0.05, 0.9) : 0;
+    const orbitSpeed = definition.orbit.speed * speedMultiplier;
+    const orbitInclination = definition.orbit.inclination + tiltOffset;
+    const appliedScale = definition.scale * radiusMultiplier;
     const orbitQuaternion = useMemo(
-        () => new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), definition.orbit.inclination),
-        [definition.orbit.inclination],
+        () => new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), orbitInclination),
+        [orbitInclination],
     );
     const orbitSemiMinor = useMemo(
         () => definition.orbit.semiMajorAxis * Math.sqrt(1 - definition.orbit.eccentricity * definition.orbit.eccentricity),
@@ -316,21 +510,21 @@ const Planet = ({ definition, isSelected, onSelect, onPositionChange }: PlanetPr
 
     useFrame((state, delta) => {
         if (!groupRef.current) return;
-        const { semiMajorAxis: a, eccentricity: e, speed, phase } = definition.orbit;
+        const { semiMajorAxis: a, eccentricity: e, phase } = definition.orbit;
         const time = state.clock.getElapsedTime();
-        const angle = time * speed + phase;
+        const angle = time * orbitSpeed + phase;
         const x = Math.cos(angle) * a - a * e;
         const z = Math.sin(angle) * orbitSemiMinor;
         const position = orbitPosition.current;
         position.set(x, 0, z).applyQuaternion(orbitQuaternion);
         groupRef.current.position.copy(position);
         groupRef.current.getWorldPosition(worldPositionRef.current);
-        if (isSelected && onPositionChange) {
+        if (onPositionChange) {
             onPositionChange(definition, worldPositionRef.current);
         }
 
         if (meshRef.current) {
-            meshRef.current.rotation.y += delta * definition.rotationSpeed;
+            meshRef.current.rotation.y += delta * definition.rotationSpeed * rotationMultiplier;
         }
     });
 
@@ -357,8 +551,14 @@ const Planet = ({ definition, isSelected, onSelect, onPositionChange }: PlanetPr
 
     return (
         <group>
-            <OrbitPath orbit={definition.orbit} color={definition.color} />
-            <group ref={groupRef} scale={definition.scale}>
+            <OrbitPath
+                orbit={{
+                    ...definition.orbit,
+                    inclination: orbitInclination,
+                }}
+                color={definition.color}
+            />
+            <group ref={groupRef} scale={appliedScale}>
                 <mesh
                     ref={meshRef}
                     castShadow
@@ -372,8 +572,8 @@ const Planet = ({ definition, isSelected, onSelect, onPositionChange }: PlanetPr
                         map={planetTexture}
                         roughness={0.6}
                         metalness={0.1}
-                        emissive="#000000"
-                        emissiveIntensity={0}
+                        emissive={definition.color}
+                        emissiveIntensity={isSelected ? emissiveIntensity : 0}
                     />
                     {isSelected ? <Edges scale={1.08} color="#eafe07" /> : null}
                 </mesh>
@@ -531,11 +731,12 @@ const earthDefinition: PlanetDefinition = {
 type EarthProps = {
     definition: PlanetDefinition;
     isSelected: boolean;
+    activeParams: SimulationParams | null;
     onSelect: (definition: PlanetDefinition, position: VectorTuple) => void;
-    onPositionChange: (position: Vector3) => void;
+    onPositionChange: (definition: PlanetDefinition, position: Vector3) => void;
 };
 
-const Earth = ({ definition, isSelected, onSelect, onPositionChange }: EarthProps) => {
+const Earth = ({ definition, isSelected, activeParams, onSelect, onPositionChange }: EarthProps) => {
     const groupRef = useRef<Group>(null);
     const meshRef = useRef<Mesh>(null);
     const worldPositionRef = useRef(new Vector3());
@@ -544,16 +745,23 @@ const Earth = ({ definition, isSelected, onSelect, onPositionChange }: EarthProp
     const earthMap = useTexture('https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg');
     earthMap.colorSpace = SRGBColorSpace;
     const earthNormalMap = useTexture('https://threejs.org/examples/textures/planets/earth_normal_2048.jpg');
+    const radiusMultiplier = isSelected && activeParams ? clamp(1 + activeParams.radius * 0.08, 0.5, 4) : 1;
+    const speedMultiplier = isSelected && activeParams ? clamp(1 + activeParams.velocity * 0.03, 0.25, 4.5) : 1;
+    const rotationMultiplier = isSelected && activeParams ? clamp(1 + activeParams.mass * 0.005, 0.5, 4) : 1;
+    const tiltOffset = isSelected && activeParams ? degToRad(activeParams.angle) * 0.02 : 0;
+    const emissiveIntensity = isSelected && activeParams ? clamp(0.2 + activeParams.mass * 0.01, 0.05, 0.9) : 0;
+    const orbitSpeed = EARTH_ORBIT_SPEED * speedMultiplier;
+    const dynamicTilt = EARTH_ORBIT_TILT + tiltOffset;
     const orbitQuaternion = useMemo(
-        () => new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), EARTH_ORBIT_TILT),
-        [],
+        () => new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), dynamicTilt),
+        [dynamicTilt],
     );
     const orbitPosition = useRef(new Vector3());
 
     useFrame((state, delta) => {
         if (!groupRef.current) return;
         const time = state.clock.getElapsedTime();
-        const angle = time * EARTH_ORBIT_SPEED;
+        const angle = time * orbitSpeed;
         const x = Math.cos(angle) * EARTH_SEMI_MAJOR_AXIS - EARTH_SEMI_MAJOR_AXIS * EARTH_ORBIT_ECCENTRICITY;
         const z = Math.sin(angle) * EARTH_SEMI_MINOR_AXIS;
         const position = orbitPosition.current;
@@ -564,10 +772,11 @@ const Earth = ({ definition, isSelected, onSelect, onPositionChange }: EarthProp
         position.y += EARTH_VERTICAL_OFFSET;
         groupRef.current.position.copy(position);
         groupRef.current.getWorldPosition(worldPositionRef.current);
-        onPositionChange(worldPositionRef.current);
+        onPositionChange(definition, worldPositionRef.current);
 
         if (meshRef.current) {
-            meshRef.current.rotation.y += delta * EARTH_ROTATION_SPEED;
+            meshRef.current.rotation.y += delta * EARTH_ROTATION_SPEED * rotationMultiplier;
+            meshRef.current.scale.set(radiusMultiplier, radiusMultiplier, radiusMultiplier);
         }
     });
 
@@ -592,7 +801,13 @@ const Earth = ({ definition, isSelected, onSelect, onPositionChange }: EarthProp
 
     return (
         <group>
-            <OrbitPath orbit={definition.orbit} color={definition.color} />
+            <OrbitPath
+                orbit={{
+                    ...definition.orbit,
+                    inclination: dynamicTilt,
+                }}
+                color={definition.color}
+            />
             <group ref={groupRef}>
                 <mesh
                     ref={meshRef}
@@ -608,22 +823,22 @@ const Earth = ({ definition, isSelected, onSelect, onPositionChange }: EarthProp
                         normalMap={earthNormalMap}
                         metalness={0.05}
                         roughness={0.85}
-                        emissive="#000000"
-                        emissiveIntensity={0}
+                        emissive="#1d4ed8"
+                        emissiveIntensity={emissiveIntensity}
                     />
                     {isSelected ? <Edges scale={1.04} color="#eafe07" /> : null}
                 </mesh>
-                <Atmosphere radius={EARTH_RADIUS * 1.08} />
+                <Atmosphere radius={EARTH_RADIUS * 1.08 * radiusMultiplier} />
             </group>
         </group>
     );
 };
 
-type AsteroidProps = Pick<SimulationParams, 'radius' | 'velocity' | 'angle'> & {
+type MoonProps = Pick<SimulationParams, 'radius' | 'velocity' | 'angle'> & {
     centerRef: MutableRefObject<Vector3>;
 };
 
-const Asteroid = ({ radius, velocity, angle, centerRef }: AsteroidProps) => {
+const Moon = ({ radius, velocity, angle, centerRef }: MoonProps) => {
     const meshRef = useRef<Mesh>(null!);
     const orbitRadius = EARTH_RADIUS * 6;
     const moonTexture = useTexture('https://threejs.org/examples/textures/planets/moon_1024.jpg');
@@ -645,7 +860,7 @@ const Asteroid = ({ radius, velocity, angle, centerRef }: AsteroidProps) => {
 
     return (
         <mesh ref={meshRef} castShadow>
-            <sphereGeometry args={[Math.max(0.3, radius * 2), 32, 32]} />
+            <sphereGeometry args={[Math.max(0.2, radius * 1.4), 32, 32]} />
             <meshStandardMaterial map={moonTexture} roughness={1} metalness={0.05} />
         </mesh>
     );
@@ -653,18 +868,138 @@ const Asteroid = ({ radius, velocity, angle, centerRef }: AsteroidProps) => {
 
 type SimulationViewportProps = {
     params: SimulationParams;
+    controlPanelOpen?: boolean;
+    onControlPanelOpenChange?: (open: boolean) => void;
 };
 
-const SimulationViewport = ({ params }: SimulationViewportProps) => {
+const SimulationViewport = ({ params, controlPanelOpen: externalControlPanelOpen, onControlPanelOpenChange }: SimulationViewportProps) => {
     const controlsRef = useRef<OrbitControlsImpl>(null);
     const earthPositionRef = useRef(new Vector3());
     const focusPositionRef = useRef(new Vector3());
+    const planetPositionsRef = useRef<Record<string, Vector3>>({});
+    const registeredPlanetsRef = useRef(new Set<string>());
+    const totalPlanets = planetDefinitions.length + 1;
     const [focusState, setFocusState] = useState<FocusState | null>(null);
+    const [selectedAsteroid, setSelectedAsteroid] = useState<AsteroidDefinition | null>(null);
+    const [positionsReady, setPositionsReady] = useState(false);
+    const [synthesisOpen, setSynthesisOpen] = useState(true);
+    const [internalControlPanelOpen, setInternalControlPanelOpen] = useState(false);
+    const planetParamsRef = useRef<Record<string, SimulationParams>>({});
+    const latestParamsRef = useRef(params);
+    const activeTargetRef = useRef<string | null>(null);
+
+    const controlPanelOpen = externalControlPanelOpen ?? internalControlPanelOpen;
+    const setControlPanelOpen = onControlPanelOpenChange ?? setInternalControlPanelOpen;
+
+    useEffect(() => {
+        latestParamsRef.current = params;
+        const activeKey = activeTargetRef.current ?? DEFAULT_TARGET_KEY;
+        if (!activeTargetRef.current) {
+            planetParamsRef.current[activeKey] = { ...params };
+        }
+    }, [params]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+
+        const handler = (event: Event) => {
+            const detail = (event as CustomEvent<{ planetName: string; params: SimulationParams }>).detail;
+            planetParamsRef.current[detail.planetName] = { ...detail.params };
+        };
+
+        window.addEventListener(UPDATE_PLANET_PARAMS_EVENT, handler as EventListener);
+        return () => window.removeEventListener(UPDATE_PLANET_PARAMS_EVENT, handler as EventListener);
+    }, []);
+
+    const emitFocusChange = useCallback(
+        (definition: PlanetDefinition | null) => {
+            if (typeof window === 'undefined') return;
+            const key = definition?.name ?? DEFAULT_TARGET_KEY;
+            const fallback =
+                planetParamsRef.current[key] ??
+                planetParamsRef.current[DEFAULT_TARGET_KEY] ??
+                latestParamsRef.current;
+            const snapshot = { ...fallback };
+            planetParamsRef.current[key] = snapshot;
+            window.dispatchEvent(
+                new CustomEvent<SelectedPlanetEventDetail>(
+                    SELECTED_PLANET_EVENT,
+                    { detail: { planetName: definition?.name ?? null, params: snapshot } } as CustomEventInit<SelectedPlanetEventDetail>,
+                ),
+            );
+        },
+        [],
+    );
+
+    useEffect(() => {
+        emitFocusChange(null);
+    }, [emitFocusChange]);
+
+    useEffect(() => {
+        const nextName = focusState?.definition.name ?? null;
+        const prevName = activeTargetRef.current;
+        activeTargetRef.current = nextName;
+        if (prevName === nextName) {
+            return;
+        }
+        emitFocusChange(focusState?.definition ?? null);
+    }, [emitFocusChange, focusState]);
 
     const handlePlanetSelect = useCallback((definition: PlanetDefinition, position: VectorTuple) => {
         focusPositionRef.current.set(position[0], position[1], position[2]);
         setFocusState({ definition });
     }, []);
+
+    const handlePlanetPositionUpdate = useCallback(
+        (definition: PlanetDefinition, position: Vector3) => {
+            const store = planetPositionsRef.current;
+            const existing = store[definition.name];
+            if (existing) {
+                existing.copy(position);
+            } else {
+                store[definition.name] = position.clone();
+            }
+            if (!registeredPlanetsRef.current.has(definition.name)) {
+                registeredPlanetsRef.current.add(definition.name);
+                if (registeredPlanetsRef.current.size >= totalPlanets) {
+                    setPositionsReady(true);
+                }
+            }
+            if (definition.name === earthDefinition.name) {
+                earthPositionRef.current.copy(position);
+            }
+            if (focusState?.definition.name === definition.name) {
+                focusPositionRef.current.copy(position);
+            }
+        },
+        [focusState, totalPlanets],
+    );
+
+    const handleAsteroidSelect = useCallback((definition: AsteroidDefinition, position: VectorTuple) => {
+        setSelectedAsteroid(definition);
+        setFocusState(null);
+    }, []);
+
+    const handleAsteroidPositionUpdate = useCallback(
+        (definition: AsteroidDefinition, position: Vector3) => {
+            // Optional: track asteroid positions if needed
+        },
+        [],
+    );
+
+    const planetOptions = [earthDefinition, ...planetDefinitions];
+    const handleMenuPlanetSelect = (event: ChangeEvent<HTMLSelectElement>) => {
+        const planetName = event.target.value;
+        if (!planetName) {
+            handleResetFocus();
+            return;
+        }
+        const definition = planetOptions.find((planet) => planet.name === planetName);
+        if (!definition) return;
+        const storedPosition = planetPositionsRef.current[planetName];
+        if (!storedPosition) return;
+        handlePlanetSelect(definition, [storedPosition.x, storedPosition.y, storedPosition.z]);
+    };
 
     const handleFocusPositionChange = useCallback(
         (definition: PlanetDefinition, position: Vector3) => {
@@ -673,14 +1008,6 @@ const SimulationViewport = ({ params }: SimulationViewportProps) => {
             }
         },
         [focusState],
-    );
-
-    const handleEarthPositionUpdate = useCallback(
-        (position: Vector3) => {
-            earthPositionRef.current.copy(position);
-            handleFocusPositionChange(earthDefinition, position);
-        },
-        [handleFocusPositionChange],
     );
 
     const handleResetFocus = useCallback(() => {
@@ -694,9 +1021,12 @@ const SimulationViewport = ({ params }: SimulationViewportProps) => {
     }, [focusState]);
 
     const selectedBody = focusState?.definition ?? null;
+    const defaultParamsSnapshot = planetParamsRef.current[DEFAULT_TARGET_KEY] ?? latestParamsRef.current;
+    const moonControlParams = focusState ? defaultParamsSnapshot : params;
+    const selectedPlanetParams = selectedBody ? (planetParamsRef.current[selectedBody.name] ?? params) : null;
 
     return (
-        <section className="relative h-screen w-full overflow-hidden rounded-3xl border border-[#2E96F5]/35 bg-black">
+        <section className="relative h-screen w-full overflow-hidden bg-black">
             <div className="relative z-10 h-full">
                 <Canvas
                     className="bg-black"
@@ -704,16 +1034,19 @@ const SimulationViewport = ({ params }: SimulationViewportProps) => {
                     camera={{
                         position: [DEFAULT_CAMERA_POSITION.x, DEFAULT_CAMERA_POSITION.y, DEFAULT_CAMERA_POSITION.z],
                         fov: 45,
-                        far: 3000,
+                        near: 0.1,
+                        far: 5000,
                     }}
                     onPointerMissed={(event) => {
                         if (event.button === 0) {
                             handleResetFocus();
+                            setSelectedAsteroid(null);
                         }
                     }}
                 >
+                    <color attach="background" args={['#000000']} />
                     <ambientLight intensity={0.55} />
-                    <pointLight position={[0, 0, 0]} intensity={1.6} color="#f8d27a" distance={600} />
+                    <pointLight position={[0, 0, 0]} intensity={1.25} color="#f8d27a" distance={1500} />
                     <directionalLight
                         position={[60, 40, 20]}
                         intensity={0.6}
@@ -721,8 +1054,21 @@ const SimulationViewport = ({ params }: SimulationViewportProps) => {
                         shadow-mapSize-width={2048}
                         shadow-mapSize-height={2048}
                     />
-                    <Stars radius={2600} depth={180} count={12000} factor={5} fade />
+                    <Stars {...STARS_CONFIG} />
+                    <Stars radius={200} depth={100} count={3000} factor={5} saturation={0} fade={true} speed={0.8} />
+                    <Stars radius={300} depth={150} count={2000} factor={6} saturation={0.2} fade={true} speed={0.5} />
                     <SunGlow />
+                    <group>
+                        {asteroidDefinitions.map((asteroid) => (
+                            <Asteroid
+                                key={asteroid.name}
+                                definition={asteroid}
+                                isSelected={selectedAsteroid?.name === asteroid.name}
+                                onSelect={handleAsteroidSelect}
+                                onPositionChange={handleAsteroidPositionUpdate}
+                            />
+                        ))}
+                    </group>
                     <group>
                         {planetDefinitions.map((planet) => (
                             <Planet
@@ -730,20 +1076,22 @@ const SimulationViewport = ({ params }: SimulationViewportProps) => {
                                 definition={planet}
                                 isSelected={focusState?.definition.name === planet.name}
                                 onSelect={handlePlanetSelect}
-                                onPositionChange={handleFocusPositionChange}
+                                onPositionChange={handlePlanetPositionUpdate}
+                                activeParams={focusState?.definition.name === planet.name ? selectedPlanetParams : null}
                             />
                         ))}
                     </group>
                     <Earth
                         definition={earthDefinition}
                         isSelected={focusState?.definition.name === earthDefinition.name}
+                        activeParams={focusState?.definition.name === earthDefinition.name ? selectedPlanetParams : null}
                         onSelect={handlePlanetSelect}
-                        onPositionChange={handleEarthPositionUpdate}
+                        onPositionChange={handlePlanetPositionUpdate}
                     />
-                    <Asteroid
-                        radius={params.radius}
-                        velocity={params.velocity}
-                        angle={params.angle}
+                    <Moon
+                        radius={moonControlParams.radius}
+                        velocity={moonControlParams.velocity}
+                        angle={moonControlParams.angle}
                         centerRef={earthPositionRef}
                     />
                     <CameraFocusManager
@@ -757,22 +1105,60 @@ const SimulationViewport = ({ params }: SimulationViewportProps) => {
                         enableDamping
                         dampingFactor={0.08}
                         minDistance={10}
-                        maxDistance={focusState ? 900 : 1500}
+                        maxDistance={focusState ? 1400 : 2200}
                     />
                 </Canvas>
             </div>
 
-            <div className="absolute bottom-4 left-6 z-20 w-[min(440px,90%)] overflow-hidden rounded-2xl border border-white/15 bg-white/10 p-[1px] shadow-[0_30px_60px_rgba(4,16,50,0.45)] backdrop-blur-xl">
+            <div className="absolute bottom-4 left-6 z-30 flex gap-3">
+                <button
+                    onClick={() => setControlPanelOpen(!controlPanelOpen)}
+                    className="rounded-xl border border-white/15 bg-[#eafe07]/90 px-4 py-2 text-sm font-semibold uppercase text-black shadow-lg backdrop-blur-xl transition-all duration-300 hover:bg-[#eafe07] hover:scale-105"
+                >
+                    {controlPanelOpen ? 'Masquer Réglages' : 'Ouvrir Réglages'}
+                </button>
+                <button
+                    onClick={() => setSynthesisOpen(!synthesisOpen)}
+                    className="rounded-xl border border-white/15 bg-[#2E96F5]/90 px-4 py-2 text-sm font-semibold uppercase text-white shadow-lg backdrop-blur-xl transition-all duration-300 hover:bg-[#eafe07] hover:text-black"
+                >
+                    {synthesisOpen ? 'Masquer Synthèse' : 'Afficher Synthèse'}
+                </button>
+            </div>
+
+            <div
+                className={`absolute bottom-20 left-6 z-20 w-[min(360px,85%)] overflow-hidden rounded-2xl border border-white/15 bg-white/10 p-[1px] shadow-[0_30px_60px_rgba(4,16,50,0.45)] backdrop-blur-xl transition-all duration-300 ${synthesisOpen ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0 pointer-events-none'
+                    }`}
+            >
                 <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[#2E96F5]/35 via-transparent to-[#0C1C4D]/70 opacity-90" />
                 <div className="pointer-events-none absolute -left-12 -top-16 h-48 w-48 rounded-full bg-[#2E96F5]/35 blur-3xl" />
-                <div className="relative z-10 w-full rounded-[1.8rem] p-5 text-sm text-[#E6ECFF]">
+                <div className="relative z-10 w-full rounded-[1.8rem] p-4 text-sm text-[#E6ECFF]">
                     <h2 className="text-base font-semibold text-[#2E96F5]">Synthèse rapide</h2>
+                    <div className="mt-3 flex flex-col gap-1 text-xs text-[#A8B9FF]">
+                        <label className="font-semibold uppercase tracking-wide text-[#2E96F5]">
+                            Cibler une planète
+                        </label>
+                        <select
+                            value={selectedBody?.name ?? ''}
+                            onChange={handleMenuPlanetSelect}
+                            disabled={!positionsReady}
+                            className="rounded-lg border border-[#2E96F5]/40 bg-[#041032]/80 px-3 py-2 text-white focus:border-[#eafe07] focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                            <option value="">Aucune sélection</option>
+                            {planetOptions.map((planet) => (
+                                <option key={planet.name} value={planet.name}>
+                                    {planet.name}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
                     <p className="mt-2 text-xs text-[#A8B9FF]">
-                        Projection du système et suivi temps réel des paramètres. Cliquez sur une planète pour centrer la vue et obtenir ses indicateurs
-                        orbitaux.
+                        Projection du système et suivi temps réel des paramètres. Cliquez sur une planète pour centrer la vue, appliquer les réglages et obtenir ses indicateurs orbitaux.
+                    </p>
+                    <p className="mt-3 text-[0.7rem] leading-relaxed text-[#A8B9FF]">
+                        Les curseurs du panneau contrôlent la planète suivie ; sans sélection, ils pilotent l'objet de mission par défaut.
                     </p>
                     <div className="mt-4 grid grid-cols-2 gap-4 text-xs">
-                        <div className="col-span-2 rounded-xl border border-[#2E96F5]/25 bg-[#07173F]/70 p-3">
+                        <div className="col-span-2 rounded-xl border border-[#2E96F5]/25 bg-[#07173F]/70 p-2.5">
                             <p className="text-[#A8B9FF]">Planète suivie</p>
                             <p className="text-lg font-semibold text-[#eafe07]">{selectedBody ? selectedBody.name : 'Aucune'}</p>
                             <p className="mt-2 text-[0.7rem] leading-relaxed text-[#A8B9FF]">
@@ -781,37 +1167,37 @@ const SimulationViewport = ({ params }: SimulationViewportProps) => {
                                     : 'Cliquez sur une planète pour zoomer, ajuster la caméra et analyser sa trajectoire par rapport à votre scénario.'}
                             </p>
                         </div>
-                        <div className="rounded-xl border border-[#2E96F5]/25 bg-[#07173F]/70 p-3">
+                        <div className="rounded-xl border border-[#2E96F5]/25 bg-[#07173F]/70 p-2.5">
                             <p className="text-[#A8B9FF]">Vitesse actuelle</p>
                             <p className="text-lg font-semibold text-[#eafe07]">{decimalFormatter.format(params.velocity)} km/s</p>
                         </div>
-                        <div className="rounded-xl border border-[#2E96F5]/25 bg-[#07173F]/70 p-3">
+                        <div className="rounded-xl border border-[#2E96F5]/25 bg-[#07173F]/70 p-2.5">
                             <p className="text-[#A8B9FF]">Inclinaison</p>
                             <p className="text-lg font-semibold text-[#eafe07]">{decimalFormatter.format(params.angle)}°</p>
                         </div>
-                        <div className="rounded-xl border border-[#2E96F5]/25 bg-[#07173F]/70 p-3">
+                        <div className="rounded-xl border border-[#2E96F5]/25 bg-[#07173F]/70 p-2.5">
                             <p className="text-[#A8B9FF]">Masse</p>
                             <p className="text-lg font-semibold text-[#eafe07]">{decimalFormatter.format(params.mass)} ×10¹² kg</p>
                         </div>
-                        <div className="rounded-xl border border-[#2E96F5]/25 bg-[#07173F]/70 p-3">
+                        <div className="rounded-xl border border-[#2E96F5]/25 bg-[#07173F]/70 p-2.5">
                             <p className="text-[#A8B9FF]">Rayon</p>
                             <p className="text-lg font-semibold text-[#eafe07]">{decimalFormatter.format(params.radius)} km</p>
                         </div>
                         {selectedBody ? (
                             <>
-                                <div className="rounded-xl border border-[#2E96F5]/25 bg-[#07173F]/70 p-3">
+                                <div className="rounded-xl border border-[#2E96F5]/25 bg-[#07173F]/70 p-2.5">
                                     <p className="text-[#A8B9FF]">Distance orbitale moyenne</p>
                                     <p className="text-lg font-semibold text-[#eafe07]">
                                         {distanceFormatter.format(selectedBody.distanceAu)} AU
                                     </p>
                                 </div>
-                                <div className="rounded-xl border border-[#2E96F5]/25 bg-[#07173F]/70 p-3">
+                                <div className="rounded-xl border border-[#2E96F5]/25 bg-[#07173F]/70 p-2.5">
                                     <p className="text-[#A8B9FF]">Excentricité</p>
                                     <p className="text-lg font-semibold text-[#eafe07]">
                                         {orbitalDetailFormatter.format(selectedBody.orbit.eccentricity)}
                                     </p>
                                 </div>
-                                <div className="col-span-2 rounded-xl border border-[#2E96F5]/25 bg-[#07173F]/70 p-3">
+                                <div className="col-span-2 rounded-xl border border-[#2E96F5]/25 bg-[#07173F]/70 p-2.5">
                                     <p className="text-[#A8B9FF]">Inclinaison orbitale</p>
                                     <p className="text-lg font-semibold text-[#eafe07]">
                                         {orbitalDetailFormatter.format(selectedBody.inclinationDegrees)}°
@@ -822,6 +1208,52 @@ const SimulationViewport = ({ params }: SimulationViewportProps) => {
                     </div>
                 </div>
             </div>
+
+            {selectedAsteroid && (
+                <div className="absolute top-6 right-6 z-30 w-[min(340px,85%)] overflow-hidden rounded-2xl border border-red-500/30 bg-black/80 p-[1px] shadow-[0_30px_60px_rgba(139,0,0,0.45)] backdrop-blur-xl">
+                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-red-500/25 via-transparent to-red-900/50 opacity-90" />
+                    <div className="relative z-10 w-full rounded-[1.8rem] p-4">
+                        <div className="flex items-start justify-between">
+                            <div>
+                                <h3 className="text-sm font-semibold uppercase tracking-wide text-red-400">Astéroïde</h3>
+                                <p className="mt-1 text-xl font-bold text-white">{selectedAsteroid.name}</p>
+                            </div>
+                            <button
+                                onClick={() => setSelectedAsteroid(null)}
+                                className="rounded-lg border border-red-500/40 bg-red-500/20 px-3 py-1 text-xs font-semibold uppercase text-red-400 transition-all hover:bg-red-500/30"
+                            >
+                                Fermer
+                            </button>
+                        </div>
+                        <div className="mt-4">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-red-400">Composition</p>
+                            <div className="mt-2 space-y-2">
+                                {Object.entries(selectedAsteroid.composition).map(([key, value]) => (
+                                    value > 0 && (
+                                        <div key={key} className="flex items-center justify-between text-sm">
+                                            <span className="capitalize text-gray-300">{key}</span>
+                                            <div className="flex items-center gap-2">
+                                                <div className="h-2 w-24 overflow-hidden rounded-full bg-gray-700">
+                                                    <div
+                                                        className="h-full bg-red-500"
+                                                        style={{ width: `${value}%` }}
+                                                    />
+                                                </div>
+                                                <span className="w-12 text-right font-semibold text-red-400">{value}%</span>
+                                            </div>
+                                        </div>
+                                    )
+                                ))}
+                            </div>
+                        </div>
+                        <div className="mt-4 rounded-xl border border-red-500/25 bg-red-950/30 p-3">
+                            <p className="text-xs text-gray-400">
+                                Cet astéroïde fait partie de la ceinture principale située entre Mars et Jupiter. Sa composition peut fournir des indices sur la formation du système solaire.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
         </section>
     );
 };
