@@ -193,7 +193,9 @@ const TextType = ({
     Component,
     {
       ref: containerRef,
-      className: `inline-block whitespace-pre-wrap tracking-tight ${className}`,
+      // keep the type output inline and prevent wrapping so parent containers (badges)
+      // don't jump lines while typing
+      className: `inline whitespace-pre tracking-tight align-middle ${className}`,
       ...props,
     },
     <span className="inline" style={{ color: getCurrentTextColor() }}>
@@ -202,7 +204,8 @@ const TextType = ({
     showCursor && (
       <span
         ref={cursorRef}
-        className={`ml-1 inline-block opacity-100 ${
+        // use inline cursor and align to middle to avoid layout shifts
+        className={`ml-1 inline align-middle opacity-100 ${
           shouldHideCursor ? "hidden" : ""
         } ${cursorClassName}`}
       >

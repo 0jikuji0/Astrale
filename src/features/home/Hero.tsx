@@ -16,7 +16,13 @@ const HomeHero = () => {
               <Navbar />
             </div>
             <div className="flex flex-col items-center gap-5">
-              <Badge color="blue" variant="outline">
+              <Badge color="blue" variant="outline" className="gap-2">
+                <img
+                  src="/public/logo.webp"
+                  alt="Logo"
+                  width={25}
+                  height={25}
+                />
                 <TextType
                   text="NASA SPACE APPS - 25"
                   typingSpeed={75}
