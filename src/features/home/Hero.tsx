@@ -61,7 +61,8 @@ const HomeHero = () => {
               <Button
                 asChild
                 size="lg"
-                className="bg-gradient-to-r from-fuchsia-500 to-fuchsia-700 text-white transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_8px_30px_rgba(240,171,252,0.3)] rounded-md"
+                className=" px-8 py-6
+                bg-gradient-to-r from-fuchsia-500 to-fuchsia-700 text-white transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_8px_30px_rgba(240,171,252,0.3)] rounded-md"
               >
                 <Link to="/simulation">Lancer la simulation</Link>
               </Button>
@@ -69,7 +70,7 @@ const HomeHero = () => {
                 asChild
                 size="lg"
                 variant="ghost"
-                className="text-slate-200 transition-all duration-300 hover:scale-[1.02] bg-transparent underline hover:text-white"
+                className=" px-8 py-6 text-slate-200 transition-all duration-300 hover:scale-[1.02] bg-transparent underline hover:text-white"
               >
                 <a href="#presentation">Découvrir la plateforme</a>
               </Button>
