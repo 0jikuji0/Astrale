@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { SRGBColorSpace } from 'three';
+import { DoubleSide, SRGBColorSpace } from 'three';
 
 import { OrbitControls, Stars, useTexture } from '@react-three/drei';
 import { Canvas, useFrame } from '@react-three/fiber';
@@ -8,7 +8,7 @@ import { decimalFormatter } from './formatters';
 import { degToRad } from './utils';
 
 import type { RootState } from '@react-three/fiber';
-import type { Mesh } from 'three';
+import type { Group, Mesh } from 'three';
 import type { SimulationParams } from './types';
 
 const Earth = () => {
@@ -71,34 +71,82 @@ const SimulationViewport = ({ params }: SimulationViewportProps) => {
         position: [number, number, number];
         scale: number;
         rotationSpeed?: number;
+        rings?: {
+            innerRadius: number;
+            outerRadius: number;
+            color: string;
+            opacity?: number;
+            tilt?: [number, number, number];
+        };
     };
 
     const planets: ReadonlyArray<PlanetDefinition> = [
         {
+            name: 'Mercury',
+            texture: '/images/mercury_hd.jpg',
+            position: [-15, 1.2, -28],
+            scale: 0.65,
+            rotationSpeed: 0.06,
+        },
+        {
+            name: 'Venus',
+            texture: '/images/venus_hd.jpg',
+            position: [-22, 0.6, -42],
+            scale: 1.5,
+            rotationSpeed: 0.025,
+        },
+        {
             name: 'Mars',
-            texture: 'https://threejs.org/examples/textures/planets/mars_1024.jpg',
-            position: [-22, 4, -46],
+            texture: '/images/mars_hd.jpg',
+            position: [-30, 4, -58],
             scale: 1.8,
             rotationSpeed: 0.03,
         },
         {
             name: 'Jupiter',
-            texture: 'https://threejs.org/examples/textures/planets/jupiter_1024.jpg',
-            position: [48, 16, -120],
+            texture: '/images/jupiter_hd.jpg',
+            position: [48, 16, -110],
             scale: 6.5,
             rotationSpeed: 0.01,
         },
         {
+            name: 'Saturn',
+            texture: '/images/saturn_hd.jpg',
+            position: [70, 13, -140],
+            scale: 5.2,
+            rotationSpeed: 0.018,
+            rings: {
+                innerRadius: 1.3,
+                outerRadius: 2.4,
+                color: '#f5e2b5',
+                opacity: 0.55,
+            },
+        },
+        {
+            name: 'Uranus',
+            texture: '/images/uranus_hd.jpg',
+            position: [-85, 9, -170],
+            scale: 3.6,
+            rotationSpeed: 0.02,
+            rings: {
+                innerRadius: 1,
+                outerRadius: 1.5,
+                color: '#cde5ff',
+                opacity: 0.35,
+                tilt: [-Math.PI / 2.4, 0, Math.PI / 9],
+            },
+        },
+        {
             name: 'Neptune',
-            texture: 'https://threejs.org/examples/textures/planets/neptune_1024.jpg',
-            position: [-60, -2, -160],
+            texture: '/images/neptune_hd.jpg',
+            position: [-100, -2, -205],
             scale: 3.4,
             rotationSpeed: 0.02,
         },
     ];
 
-    const Planet = ({ texture, position, scale, rotationSpeed = 0.02 }: PlanetDefinition) => {
-        const planetRef = useRef<Mesh>(null!);
+    const Planet = ({ texture, position, scale, rotationSpeed = 0.02, rings }: PlanetDefinition) => {
+        const planetRef = useRef<Group>(null!);
         const planetTexture = useTexture(texture);
         planetTexture.colorSpace = SRGBColorSpace;
 
@@ -108,10 +156,18 @@ const SimulationViewport = ({ params }: SimulationViewportProps) => {
         });
 
         return (
-            <mesh ref={planetRef} position={position} scale={scale} castShadow receiveShadow>
-                <sphereGeometry args={[1, 48, 48]} />
-                <meshStandardMaterial map={planetTexture} roughness={0.6} metalness={0.1} />
-            </mesh>
+            <group ref={planetRef} position={position} scale={scale}>
+                <mesh castShadow receiveShadow>
+                    <sphereGeometry args={[1, 48, 48]} />
+                    <meshStandardMaterial map={planetTexture} roughness={0.6} metalness={0.1} />
+                </mesh>
+                {rings ? (
+                    <mesh rotation={rings.tilt ?? [-Math.PI / 2, 0, 0]}>
+                        <ringGeometry args={[rings.innerRadius, rings.outerRadius, 128]} />
+                        <meshBasicMaterial color={rings.color} side={DoubleSide} transparent opacity={rings.opacity ?? 0.6} />
+                    </mesh>
+                ) : null}
+            </group>
         );
     };
 
