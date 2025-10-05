@@ -1,4 +1,3 @@
-# impact_models.py
 import math
 
 RHO_ROCK = 2500.0  # kg/m^3
