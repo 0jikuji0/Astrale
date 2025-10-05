@@ -7,11 +7,67 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="style.css" />
   <title>Solar System</title>
+  <style>/* === En-tête effet "liquid glass" === */
+.glass-header {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  box-shadow: 0 0 25px rgba(255, 255, 255, 0.05);
+  z-index: 1000;
+}
+
+.glass-header .logo {
+  height: 32px;
+  width: 32px;
+  object-fit: contain;
+}
+
+.glass-header .title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  letter-spacing: 1px;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+  user-select: none;
+}
+
+/* Petit effet d’apparition fluide */
+@keyframes fadeInHeader {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.glass-header {
+  animation: fadeInHeader 1s ease forwards;
+}
+</style>
 </head>
 
 <body>
-  <script type="module" src="./js/main.js"></script>
 
+  <!-- En-tête verre liquide -->
+  <header class="glass-header">
+    <img src="img/logo.png" alt="Logo Astral" class="logo" />
+    <h1 class="title">Astral</h1>
+  </header>
+
+  <script type="module" src="./js/main.js"></script>
 </body>
 
 </html>
