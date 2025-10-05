@@ -1,14 +1,11 @@
-# impact_utils.py
 import math
 import numpy as np
 from typing import Tuple
 from physics import rk4_step, R_EARTH
 
 def refine_impact_time(r_prev, v_prev, t_prev, dt, accel_fn, max_iter=30):
-    """
-    Cherche t* dans [t_prev, t_prev+dt] tel que |r(t*)| = R_EARTH par bissection.
-    r,v sont géocentriques (ou r_earth soustrait si frame héliocentrique).
-    """
+    # Cherche t* dans [t_prev, t_prev+dt] tel que |r(t*)| = R_EARTH par bissection.
+    # r,v sont géocentriques (ou r_earth soustrait si frame héliocentrique).
     def step(r, v, h):
         return rk4_step((r, v), h, accel_fn)
 
