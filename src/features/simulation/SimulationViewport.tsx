@@ -2,7 +2,7 @@ import gsap from 'gsap';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DoubleSide, Quaternion, SRGBColorSpace, Vector3 } from 'three';
 
-import { Line, OrbitControls, Stars, useCursor, useTexture } from '@react-three/drei';
+import { Edges, Line, OrbitControls, Stars, useCursor, useTexture } from '@react-three/drei';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 
 import { decimalFormatter } from './formatters';
@@ -372,9 +372,10 @@ const Planet = ({ definition, isSelected, onSelect, onPositionChange }: PlanetPr
                         map={planetTexture}
                         roughness={0.6}
                         metalness={0.1}
-                        emissive={isSelected ? '#eafe07' : '#000000'}
-                        emissiveIntensity={isSelected ? 0.22 : 0}
+                        emissive="#000000"
+                        emissiveIntensity={0}
                     />
+                    {isSelected ? <Edges scale={1.08} color="#eafe07" /> : null}
                 </mesh>
                 {definition.rings ? <PlanetRings {...definition.rings} /> : null}
             </group>
@@ -607,9 +608,10 @@ const Earth = ({ definition, isSelected, onSelect, onPositionChange }: EarthProp
                         normalMap={earthNormalMap}
                         metalness={0.05}
                         roughness={0.85}
-                        emissive={isSelected ? '#eafe07' : '#000000'}
-                        emissiveIntensity={isSelected ? 0.22 : 0}
+                        emissive="#000000"
+                        emissiveIntensity={0}
                     />
+                    {isSelected ? <Edges scale={1.04} color="#eafe07" /> : null}
                 </mesh>
                 <Atmosphere radius={EARTH_RADIUS * 1.08} />
             </group>
@@ -694,8 +696,8 @@ const SimulationViewport = ({ params }: SimulationViewportProps) => {
     const selectedBody = focusState?.definition ?? null;
 
     return (
-        <section className="relative flex-1 overflow-hidden rounded-3xl border border-[#2E96F5]/35 bg-black">
-            <div className="relative z-10 h-[60vh] lg:h-[70vh]">
+        <section className="relative h-screen w-full overflow-hidden rounded-3xl border border-[#2E96F5]/35 bg-black">
+            <div className="relative z-10 h-full">
                 <Canvas
                     className="bg-black"
                     shadows
@@ -760,60 +762,64 @@ const SimulationViewport = ({ params }: SimulationViewportProps) => {
                 </Canvas>
             </div>
 
-            <div className="absolute bottom-4 left-6 z-20 w-[min(440px,90%)] rounded-2xl border border-[#2E96F5]/30 bg-[#041032]/85 p-5 text-sm text-[#E6ECFF] backdrop-blur">
-                <h2 className="text-base font-semibold text-[#2E96F5]">Synthèse rapide</h2>
-                <p className="mt-2 text-xs text-[#A8B9FF]">
-                    Projection du système et suivi temps réel des paramètres. Cliquez sur une planète pour centrer la vue et obtenir ses indicateurs
-                    orbitaux.
-                </p>
-                <div className="mt-4 grid grid-cols-2 gap-4 text-xs">
-                    <div className="col-span-2 rounded-xl border border-[#2E96F5]/25 bg-[#07173F]/70 p-3">
-                        <p className="text-[#A8B9FF]">Planète suivie</p>
-                        <p className="text-lg font-semibold text-[#eafe07]">{selectedBody ? selectedBody.name : 'Aucune'}</p>
-                        <p className="mt-2 text-[0.7rem] leading-relaxed text-[#A8B9FF]">
-                            {selectedBody
-                                ? selectedBody.summary
-                                : 'Cliquez sur une planète pour zoomer, ajuster la caméra et analyser sa trajectoire par rapport à votre scénario.'}
-                        </p>
+            <div className="absolute bottom-4 left-6 z-20 w-[min(440px,90%)] overflow-hidden rounded-2xl border border-white/15 bg-white/10 p-[1px] shadow-[0_30px_60px_rgba(4,16,50,0.45)] backdrop-blur-xl">
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[#2E96F5]/35 via-transparent to-[#0C1C4D]/70 opacity-90" />
+                <div className="pointer-events-none absolute -left-12 -top-16 h-48 w-48 rounded-full bg-[#2E96F5]/35 blur-3xl" />
+                <div className="relative z-10 w-full rounded-[1.8rem] p-5 text-sm text-[#E6ECFF]">
+                    <h2 className="text-base font-semibold text-[#2E96F5]">Synthèse rapide</h2>
+                    <p className="mt-2 text-xs text-[#A8B9FF]">
+                        Projection du système et suivi temps réel des paramètres. Cliquez sur une planète pour centrer la vue et obtenir ses indicateurs
+                        orbitaux.
+                    </p>
+                    <div className="mt-4 grid grid-cols-2 gap-4 text-xs">
+                        <div className="col-span-2 rounded-xl border border-[#2E96F5]/25 bg-[#07173F]/70 p-3">
+                            <p className="text-[#A8B9FF]">Planète suivie</p>
+                            <p className="text-lg font-semibold text-[#eafe07]">{selectedBody ? selectedBody.name : 'Aucune'}</p>
+                            <p className="mt-2 text-[0.7rem] leading-relaxed text-[#A8B9FF]">
+                                {selectedBody
+                                    ? selectedBody.summary
+                                    : 'Cliquez sur une planète pour zoomer, ajuster la caméra et analyser sa trajectoire par rapport à votre scénario.'}
+                            </p>
+                        </div>
+                        <div className="rounded-xl border border-[#2E96F5]/25 bg-[#07173F]/70 p-3">
+                            <p className="text-[#A8B9FF]">Vitesse actuelle</p>
+                            <p className="text-lg font-semibold text-[#eafe07]">{decimalFormatter.format(params.velocity)} km/s</p>
+                        </div>
+                        <div className="rounded-xl border border-[#2E96F5]/25 bg-[#07173F]/70 p-3">
+                            <p className="text-[#A8B9FF]">Inclinaison</p>
+                            <p className="text-lg font-semibold text-[#eafe07]">{decimalFormatter.format(params.angle)}°</p>
+                        </div>
+                        <div className="rounded-xl border border-[#2E96F5]/25 bg-[#07173F]/70 p-3">
+                            <p className="text-[#A8B9FF]">Masse</p>
+                            <p className="text-lg font-semibold text-[#eafe07]">{decimalFormatter.format(params.mass)} ×10¹² kg</p>
+                        </div>
+                        <div className="rounded-xl border border-[#2E96F5]/25 bg-[#07173F]/70 p-3">
+                            <p className="text-[#A8B9FF]">Rayon</p>
+                            <p className="text-lg font-semibold text-[#eafe07]">{decimalFormatter.format(params.radius)} km</p>
+                        </div>
+                        {selectedBody ? (
+                            <>
+                                <div className="rounded-xl border border-[#2E96F5]/25 bg-[#07173F]/70 p-3">
+                                    <p className="text-[#A8B9FF]">Distance orbitale moyenne</p>
+                                    <p className="text-lg font-semibold text-[#eafe07]">
+                                        {distanceFormatter.format(selectedBody.distanceAu)} AU
+                                    </p>
+                                </div>
+                                <div className="rounded-xl border border-[#2E96F5]/25 bg-[#07173F]/70 p-3">
+                                    <p className="text-[#A8B9FF]">Excentricité</p>
+                                    <p className="text-lg font-semibold text-[#eafe07]">
+                                        {orbitalDetailFormatter.format(selectedBody.orbit.eccentricity)}
+                                    </p>
+                                </div>
+                                <div className="col-span-2 rounded-xl border border-[#2E96F5]/25 bg-[#07173F]/70 p-3">
+                                    <p className="text-[#A8B9FF]">Inclinaison orbitale</p>
+                                    <p className="text-lg font-semibold text-[#eafe07]">
+                                        {orbitalDetailFormatter.format(selectedBody.inclinationDegrees)}°
+                                    </p>
+                                </div>
+                            </>
+                        ) : null}
                     </div>
-                    <div className="rounded-xl border border-[#2E96F5]/25 bg-[#07173F]/70 p-3">
-                        <p className="text-[#A8B9FF]">Vitesse actuelle</p>
-                        <p className="text-lg font-semibold text-[#eafe07]">{decimalFormatter.format(params.velocity)} km/s</p>
-                    </div>
-                    <div className="rounded-xl border border-[#2E96F5]/25 bg-[#07173F]/70 p-3">
-                        <p className="text-[#A8B9FF]">Inclinaison</p>
-                        <p className="text-lg font-semibold text-[#eafe07]">{decimalFormatter.format(params.angle)}°</p>
-                    </div>
-                    <div className="rounded-xl border border-[#2E96F5]/25 bg-[#07173F]/70 p-3">
-                        <p className="text-[#A8B9FF]">Masse</p>
-                        <p className="text-lg font-semibold text-[#eafe07]">{decimalFormatter.format(params.mass)} ×10¹² kg</p>
-                    </div>
-                    <div className="rounded-xl border border-[#2E96F5]/25 bg-[#07173F]/70 p-3">
-                        <p className="text-[#A8B9FF]">Rayon</p>
-                        <p className="text-lg font-semibold text-[#eafe07]">{decimalFormatter.format(params.radius)} km</p>
-                    </div>
-                    {selectedBody ? (
-                        <>
-                            <div className="rounded-xl border border-[#2E96F5]/25 bg-[#07173F]/70 p-3">
-                                <p className="text-[#A8B9FF]">Distance orbitale moyenne</p>
-                                <p className="text-lg font-semibold text-[#eafe07]">
-                                    {distanceFormatter.format(selectedBody.distanceAu)} AU
-                                </p>
-                            </div>
-                            <div className="rounded-xl border border-[#2E96F5]/25 bg-[#07173F]/70 p-3">
-                                <p className="text-[#A8B9FF]">Excentricité</p>
-                                <p className="text-lg font-semibold text-[#eafe07]">
-                                    {orbitalDetailFormatter.format(selectedBody.orbit.eccentricity)}
-                                </p>
-                            </div>
-                            <div className="col-span-2 rounded-xl border border-[#2E96F5]/25 bg-[#07173F]/70 p-3">
-                                <p className="text-[#A8B9FF]">Inclinaison orbitale</p>
-                                <p className="text-lg font-semibold text-[#eafe07]">
-                                    {orbitalDetailFormatter.format(selectedBody.inclinationDegrees)}°
-                                </p>
-                            </div>
-                        </>
-                    ) : null}
                 </div>
             </div>
         </section>

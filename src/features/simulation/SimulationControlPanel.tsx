@@ -52,7 +52,7 @@ const SimulationControlPanel = ({
     }, []);
 
     const Panel = () => (
-        <aside className="flex max-h-full w-full max-w-xl flex-col gap-5 overflow-y-auto rounded-3xl border border-[#2E96F5]/35 bg-[#041032]/85 p-5 shadow-[0_20px_60px_rgba(7,23,63,0.6)] backdrop-blur">
+        <aside className="flex max-h-full w-full max-w-xl flex-col gap-5 overflow-y-auto p-5 shadow-[0_20px_60px_rgba(7,23,63,0.6)] backdrop-blur">
             <div className="flex items-start justify-between gap-4">
                 <div>
                     <p className="text-xs uppercase tracking-[0.45em] text-[#2E96F5]">Simulateur</p>
