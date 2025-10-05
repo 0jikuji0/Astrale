@@ -1,4 +1,3 @@
-# physics.py
 from dataclasses import dataclass
 from typing import Dict, Tuple, Literal
 import numpy as np

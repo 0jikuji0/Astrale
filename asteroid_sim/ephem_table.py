@@ -1,4 +1,3 @@
-# ephem_table.py
 import csv, bisect
 import numpy as np
 
