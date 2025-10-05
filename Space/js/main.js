@@ -16,7 +16,7 @@ const scale = 650 / 30.069;
 /* -----------------------------------------------------
    Facteur d'exagération pour inclinaisons
 ------------------------------------------------------ */
-const exaggeration = 3; // ajuster pour rendre inclinaisons visibles
+const exaggeration = 3;
 
 /* -----------------------------------------------------
    Données planètes avec excentricité et inclinaison
@@ -39,7 +39,7 @@ function init() {
   scene = new THREE.Scene();
   createStarsBackground();
 
-  // 🌞 Soleil
+  // Soleil
   planet_sun = loadPlanetTexture("/Space/img/sun_hd.jpg", 3.5, 100, 100, 'basic');
   scene.add(planet_sun);
 
@@ -47,15 +47,15 @@ function init() {
   sunLight.position.copy(planet_sun.position);
   scene.add(sunLight);
 
-  // 🪐 Planètes et orbites elliptiques inclinées
+  // Planètes et orbites
   orbitData.forEach((p) => {
     const mesh = loadPlanetTexture(p.texture, p.radius, 64, 64, 'standard');
     mesh.material.roughness = 1;
     mesh.material.metalness = 0;
+    mesh.userData.name = p.name; // 🔹 on stocke le nom dans userData
     scene.add(mesh);
     planets.push({ mesh, a: p.a, e: p.e, speed: p.speed, tilt: p.tilt });
 
-    // Génération orbite elliptique
     const points = [];
     const b = p.a * Math.sqrt(1 - p.e * p.e);
     for (let i = 0; i <= 128; i++) {
@@ -67,8 +67,6 @@ function init() {
     const orbitGeom = new THREE.BufferGeometry().setFromPoints(points);
     const orbitMat = new THREE.LineBasicMaterial({ color: p.color, transparent: true, opacity: 0.6 });
     const orbitLine = new THREE.LineLoop(orbitGeom, orbitMat);
-
-    // Inclinaison orbitale exagérée
     orbitLine.rotation.x = THREE.MathUtils.degToRad(p.tilt * exaggeration);
     scene.add(orbitLine);
   });
@@ -76,13 +74,11 @@ function init() {
   createSolarParticles();
   createSolarArcs();
 
-  // 🎥 Caméra
   camera = new THREE.PerspectiveCamera(85, window.innerWidth / window.innerHeight, 1.5, 50000);
   const jupiterOrbit = 5.203 * scale;
   camera.position.set(jupiterOrbit * 1.1, 50, jupiterOrbit * 0.5);
   camera.lookAt(planet_sun.position);
 
-  // 🚀 Rendu + Bloom
   renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(renderer.domElement);
@@ -93,7 +89,6 @@ function init() {
   composer.addPass(renderScene);
   composer.addPass(bloomPass);
 
-  // 🌀 Contrôles
   controls = new OrbitControls(camera, renderer.domElement);
   controls.target.copy(planet_sun.position);
   controls.minDistance = 5;
@@ -102,6 +97,7 @@ function init() {
   controls.dampingFactor = 0.05;
 
   window.addEventListener("resize", onWindowResize);
+  window.addEventListener("click", onClick); // 🔹 écouteur pour clic sur planète
 }
 
 /* -----------------------------------------------------
@@ -140,7 +136,7 @@ function loadPlanetTexture(texture, radius, widthSegments, heightSegments, meshT
 }
 
 /* -----------------------------------------------------
-   Particules solaires rapprochées
+   Particules solaires
 ------------------------------------------------------ */
 function createSolarParticles() {
   const particleCount = 500;
@@ -201,42 +197,64 @@ function createSolarArcs() {
 }
 
 /* -----------------------------------------------------
-   Orbites elliptiques avec inclinaison exagérée
+   Mouvement des planètes
 ------------------------------------------------------ */
 function planetRevolver(time) {
-  const speedMultiplier = 0.0005;
+  const speedMultiplier = 0.2;
   planets.forEach((p) => {
     const angle = time * speedMultiplier * p.speed;
-
-    // Coordonnées sur ellipse plane XZ
     const b = p.a * Math.sqrt(1 - p.e * p.e);
     const x = p.a * Math.cos(angle) - p.a * p.e;
     const z = b * Math.sin(angle);
+
     const pos = new THREE.Vector3(x, 0, z);
 
-    // Appliquer rotation autour de X selon inclinaison exagérée
     const tiltRad = THREE.MathUtils.degToRad(p.tilt * exaggeration);
     const quaternion = new THREE.Quaternion();
     quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, 0), tiltRad);
     pos.applyQuaternion(quaternion);
 
-    // Position finale
     p.mesh.position.copy(pos);
+    p.mesh.rotation.y += 0.01 * p.speed;
   });
 }
 
+/* -----------------------------------------------------
+   🎯 Clic sur une planète (redirige si Terre)
+------------------------------------------------------ */
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+function onClick(event) {
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+
+  const intersects = raycaster.intersectObjects(planets.map(p => p.mesh));
+
+  if (intersects.length > 0) {
+    const clicked = intersects[0].object;
+    if (clicked.userData.name === "Terre") {
+      window.location.href = "/Earth"; // 🔹 Redirection
+    }
+  }
+}
 
 /* -----------------------------------------------------
    Animation
 ------------------------------------------------------ */
 function animate(time) {
   requestAnimationFrame(animate);
+  time *= 0.001;
+
   planet_sun.rotation.y += 0.002;
   planetRevolver(time);
+
   arcs.forEach((arc, i) => {
-    const scale = 1 + 0.02 * Math.sin(time * 0.002 + i);
+    const scale = 1 + 0.02 * Math.sin(time * 2 + i);
     arc.scale.set(scale, scale, scale);
   });
+
   composer.render();
   controls.update();
 }
