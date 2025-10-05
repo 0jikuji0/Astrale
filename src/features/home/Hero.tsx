@@ -8,15 +8,18 @@ import Navbar from "@/components/ui/navbar";
 const HomeHero = () => {
   return (
     <header className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      <div className="absolute inset-0 bg-[#07173F] blur-3xl" aria-hidden />
-      <div className="relative flex flex-col gap-16 px-6 text-center max-w-4xl w-full mt-30">
+      <div
+        className="absolute inset-0 bg-gradient-to-br from-slate-900/60 to-gray-800 via-purple-900/70 opacity-95 animate-aurora"
+        aria-hidden
+      />
+      <div className="relative flex flex-col gap-16 px-6 text-center max-w-4xl w-full mt-40">
         <div className="flex flex-col">
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-5">
-            <div className="">
+          <div className="flex flex-col sm:flex-row items-center justify-center ">
+            <div>
               <Navbar />
             </div>
             <div className="flex flex-col items-center gap-5">
-              <Badge color="blue" variant="outline" className="gap-2">
+              <Badge color="fuchsia" variant="outline" className="gap-2">
                 <img
                   src="/public/logo.webp"
                   alt="Logo"
@@ -31,23 +34,23 @@ const HomeHero = () => {
                   showCursor={true}
                   cursorCharacter="|"
                   loop={true}
-                  className="text-xs text-gray-300"
+                  className="text-xs text-slate-200"
                 />
               </Badge>
-              <p className="text-xl font-semibold uppercase tracking-[0.3em] text-[#2E96F5] mb-3">
+              <p className="text-xl font-semibold uppercase tracking-[0.3em] text-fuchsia-500 mb-3">
                 Meteor Madness
               </p>
             </div>
           </div>
           <div className="flex flex-col gap-6">
-            <h1 className="text-4xl font-bold leading-tight sm:text-5xl md:text-6xl">
+            <h1 className="text-4xl font-bold leading-tight sm:text-5xl md:text-6xl text-white">
               Modélisez{" "}
-              <span className="text-[#EAFE07] italic">l&apos;impact</span>{" "}
+              <span className="text-fuchsia-600 italic">l&apos;impact</span>{" "}
               d&apos;un astéroïde et préparez des{" "}
-              <span className="text-[#EAFE07] italic"> stratégies</span> de
+              <span className="text-fuchsia-600 italic">stratégies</span> de
               défense.
             </h1>
-            <p className="text-lg text-slate-300 md:text-xl">
+            <p className="text-lg text-slate-200 md:text-xl">
               Astrale rassemble les données de la NASA et de l&apos;USGS pour
               transformer des paramètres bruts en scénarios immersifs. Explorez
               les conséquences d&apos;une collision, testez des tactiques de
@@ -58,7 +61,7 @@ const HomeHero = () => {
               <Button
                 asChild
                 size="lg"
-                className="bg-[#EAFE07] text-black transition-all duration-300 hover:bg-[#EAFE07] hover:scale-[1.02] hover:shadow-[0_4px_20px_white] rounded-md"
+                className="bg-gradient-to-r from-fuchsia-500 to-fuchsia-700 text-white transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_8px_30px_rgba(240,171,252,0.3)] rounded-md"
               >
                 <Link to="/simulation">Lancer la simulation</Link>
               </Button>
@@ -66,13 +69,13 @@ const HomeHero = () => {
                 asChild
                 size="lg"
                 variant="ghost"
-                className="text-slate-300 transition-all duration-300 hover:scale-[1.02]"
+                className="text-slate-200 transition-all duration-300 hover:scale-[1.02] bg-transparent underline hover:text-white"
               >
                 <a href="#presentation">Découvrir la plateforme</a>
               </Button>
             </div>
-          </div>{" "}
-        </div>{" "}
+          </div>
+        </div>
         <div className="mt-5">
           <Logos />
         </div>
