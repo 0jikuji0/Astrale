@@ -2,7 +2,7 @@ import * as THREE from "https://cdn.skypack.dev/three@0.129.0";
 import { OrbitControls } from "https://cdn.skypack.dev/three@0.129.0/examples/jsm/controls/OrbitControls.js";
 
 let scene, camera, renderer, controls;
-let jupiter;
+let neptune, neptuneRings;
 
 /* -----------------------------------------------------
    Initialisation
@@ -13,13 +13,13 @@ function init() {
 
   // === Caméra ===
   camera = new THREE.PerspectiveCamera(
-    750,
+    65,
     window.innerWidth / window.innerHeight,
     0.1,
-    1000
+    2000
   );
-  camera.position.set(0, 0, 75  );
-  camera.lookAt(100, 100, 100);
+  camera.position.set(0, 20, 60);
+  camera.lookAt(0, 0, 0);
 
   // === Rendu ===
   renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -28,34 +28,50 @@ function init() {
   document.body.appendChild(renderer.domElement);
 
   // === Éclairage ===
-  const ambient = new THREE.AmbientLight(0xffffff, 0.3);
+  const ambient = new THREE.AmbientLight(0xffffff, 0.4);
   scene.add(ambient);
 
-  const directional = new THREE.DirectionalLight(0xffffff, 0.5);
-  directional.position.set(10, 5, 5);
+  const directional = new THREE.DirectionalLight(0xffffff, 0.9);
+  directional.position.set(30, 20, 10);
   scene.add(directional);
 
   // === Fond d’étoiles ===
   createStarsBackground();
 
-  // === Jupiter ===
+  // === Neptune ===
   const textureLoader = new THREE.TextureLoader();
-  const jupiterTexture = textureLoader.load("/Space/img/mars_hd.jpg"); // ⚠️ mets ici le bon chemin vers ton image
-  const jupiterGeometry = new THREE.SphereGeometry(5, 64, 64);
-  const jupiterMaterial = new THREE.MeshStandardMaterial({
-    map: jupiterTexture,
+  const neptuneTexture = textureLoader.load("/Saturn/img/saturn_hd.jpg");
+  const neptuneGeometry = new THREE.SphereGeometry(5, 64, 64);
+  const neptuneMaterial = new THREE.MeshStandardMaterial({
+    map: neptuneTexture,
     roughness: 1,
     metalness: 0,
   });
-  jupiter = new THREE.Mesh(jupiterGeometry, jupiterMaterial);
-  scene.add(jupiter);
+  neptune = new THREE.Mesh(neptuneGeometry, neptuneMaterial);
+  scene.add(neptune);
+
+  // === Anneaux de Neptune ===
+  const ringTexture = textureLoader.load("/Saturn/img/saturn_ring.jpg"); // ⚠️ ton image d’anneaux
+  const ringGeometry = new THREE.RingGeometry(6, 10, 128);
+  const ringMaterial = new THREE.MeshBasicMaterial({
+    map: ringTexture,
+    side: THREE.DoubleSide,
+    transparent: true,
+    opacity: 0.8,
+  });
+
+  // Création du mesh
+  neptuneRings = new THREE.Mesh(ringGeometry, ringMaterial);
+  neptuneRings.rotation.x = THREE.MathUtils.degToRad(90); // Inclinaison initiale
+  neptuneRings.rotation.z = THREE.MathUtils.degToRad(20); // Légère rotation pour effet réaliste
+  scene.add(neptuneRings);
 
   // === Contrôles ===
   controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.dampingFactor = 0.05;
-  controls.minDistance = 6;
-  controls.maxDistance = 100;
+  controls.minDistance = 10;
+  controls.maxDistance = 200;
 
   // === Resize ===
   window.addEventListener("resize", onWindowResize);
@@ -69,7 +85,7 @@ function init() {
 function createStarsBackground() {
   const starsGeometry = new THREE.BufferGeometry();
   const starCount = 10000;
-  const starDistance = 1000;
+  const starDistance = 2000;
   const positions = [];
 
   for (let i = 0; i < starCount; i++) {
@@ -101,8 +117,9 @@ function createStarsBackground() {
 function animate() {
   requestAnimationFrame(animate);
 
-  // Rotation lente de Jupiter
-  jupiter.rotation.y += 0.002;
+  // Rotation lente de Neptune et de ses anneaux
+  neptune.rotation.y += 0.002;
+  neptuneRings.rotation.z += 0.0005; // rotation très lente des anneaux
 
   controls.update();
   renderer.render(scene, camera);

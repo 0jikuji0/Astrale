@@ -40,7 +40,7 @@ function init() {
 
   // === Jupiter ===
   const textureLoader = new THREE.TextureLoader();
-  const jupiterTexture = textureLoader.load("/Space/img/mars_hd.jpg"); // ⚠️ mets ici le bon chemin vers ton image
+  const jupiterTexture = textureLoader.load("/Venus/img/venus_hd.jpg"); // ⚠️ mets ici le bon chemin vers ton image
   const jupiterGeometry = new THREE.SphereGeometry(5, 64, 64);
   const jupiterMaterial = new THREE.MeshStandardMaterial({
     map: jupiterTexture,
