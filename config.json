@@ -1,34 +1,16 @@
 {
   "scenarios": [
     {
-      "name": "baseline_shallow_entry",
-      "epoch_utc": "2025-10-04T12:00:00Z",
-      "approach": {
-        "reference": "earth", 
-        "initial_state": {
-          "r_eci_km": [7000.0, -2000.0, 1200.0],
-          "v_eci_km_s": [-6.5, -2.0, -1.0]
-        },
-        "integrator": {"method": "rk4", "dt_s": 2.0, "t_max_s": 12000}
-      },
-      "projectile": {
-        "diameter_m": 150.0,
-        "density_kg_m3": 3000,
-        "porosity": 0.1,
-        "composition": "stony"
-      },
-      "target": {
-        "body": "earth",
-        "lat_deg": 30.0,
-        "lon_deg": -20.0,
-        "atmosphere": true,
-        "sea_level": true
-      },
-      "entry": {
-        "angle_deg": 35.0,
-        "speed_km_s": 17.0
-      },
-      "outputs": ["impact_energy_mt", "crater_diameter_km", "airburst_alt_km"]
+      "name": "demo_geocentric",
+      "gravity_model": "earth_only",
+      "integrator": { "method": "rk4", "dt_s": 2.0, "t_max_s": 20000.0 },
+      "state0": { "r_km": [7000.0, -2000.0, 1200.0], "v_km_s": [-6.5, -2.0, -1.0] },
+      "bodies": { "earth": { "mu_km3_s2": 398600.4418, "r_km": [0,0,0], "v_km_s":[0,0,0] } },
+      "frame_out": "geocentric",
+      "projectile": { "diameter_m": 150.0, "density_kg_m3": 3000.0 },
+      "target": { "body": "earth", "yield_strength_pa": 5e6, "crater_beta_stop": 0.3, "k_shape_peak": 2.0 },
+      "output_csv": "Data/trajectory_demo.csv",
+      "output_json": "Data/impact_demo.json"
     }
   ]
 }

@@ -1,5 +1,3 @@
-required library for python
-
 fastapi
 uvicorn
 pydantic
