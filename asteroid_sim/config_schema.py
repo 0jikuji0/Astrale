@@ -1,45 +1,47 @@
+# config_schema.py
 from pydantic import BaseModel, Field, conlist
-from typing import List, Literal, Optional
-
-class InitialState(BaseModel):
-    r_eci_km: List[float] = Field(..., min_items=3, max_items=3)
-    v_eci_km_s: List[float] = Field(..., min_items=3, max_items=3)
+from typing import List, Literal, Optional, Dict
 
 class IntegratorCfg(BaseModel):
-    method: Literal["rk4", "verlet"] = "rk4"
-    dt_s: float = 1.0
-    t_max_s: float = 3600.0
+    method: Literal["rk4"] = "rk4"
+    dt_s: float = 2.0
+    t_max_s: float = 86400.0  # 1 jour par défaut
 
-class Approach(BaseModel):
-    reference: Literal["earth"] = "earth"
-    initial_state: Optional[InitialState] = None   # soit état direct …
-    integrator: IntegratorCfg
+
+# r_eci_km: List[float] = Field(..., min_items=3, max_items=3)
+# v_eci_km_s: List[float] = Field(..., min_items=3, max_items=3)
+class State0(BaseModel):
+    r_km: List[float] = Field(..., min_items=3, max_items=3)
+    v_km_s: List[float] = Field(..., min_items=3, max_items=3)
+
+class BodyCfg(BaseModel):
+    mu_km3_s2: float
+    r_km: List[float] = Field([0.0, 0.0, 0.0], min_items=3, max_items=3)
+    v_km_s: List[float] = Field([0.0, 0.0, 0.0], min_items=3, max_items=3)
 
 class Projectile(BaseModel):
     diameter_m: float
     density_kg_m3: float
-    porosity: float = 0.0
-    composition: Literal["stony","iron","cometary"] = "stony"
 
 class Target(BaseModel):
     body: Literal["earth"] = "earth"
-    lat_deg: float
-    lon_deg: float
-    atmosphere: bool = True
-    sea_level: bool = True
-
-class Entry(BaseModel):
-    angle_deg: float
-    speed_km_s: float
+    yield_strength_pa: float = 5e6   # ~roche 5 MPa
+    # paramètres pour lois d'échelle (tuning rapide)
+    crater_beta_stop: float = 0.3    # s ≈ beta * D_transient
+    k_shape_peak: float = 2.0        # pic ~ k * moyenne
 
 class Scenario(BaseModel):
     name: str
-    epoch_utc: str
-    approach: Approach
+    gravity_model: Literal["earth_only", "sun_earth"] = "earth_only"
+    epoch_utc: Optional[str] = None
+    integrator: IntegratorCfg
+    state0: State0
+    bodies: Dict[str, BodyCfg] = Field(default_factory=dict)  # "sun","earth" attendus en sun_earth
+    frame_out: Literal["geocentric", "heliocentric"] = "geocentric"
     projectile: Projectile
     target: Target
-    entry: Entry
-    outputs: List[str] = ["impact_energy_mt","crater_diameter_km"]
+    output_csv: str
+    output_json: Optional[str] = None
 
 class ScenarioConfig(BaseModel):
     scenarios: List[Scenario]
