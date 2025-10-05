@@ -1,0 +1,22 @@
+{
+  "frame": "heliocentric",
+  "integrator": { "dt_s": 50.0, "t_max_s": 172800.0 },
+
+  "asteroid": {
+    "r_km": [152000000.0, -20000000.0, 0.0],
+    "v_km_s": [-15.0, 20.0, 0.1],
+    "diameter_m": 200.0,
+    "density_kg_m3": 3000.0
+  },
+
+  "bodies": {
+    "sun":   { "mu_km3_s2": 132712440018.0, "radius_km": 696340.0, "has_surface": false, "r_km": [0,0,0], "v_km_s": [0,0,0] },
+    "earth": { "mu_km3_s2": 398600.4418,    "radius_km": 6371.0,   "has_surface": true,  "r_km": [149600000.0, 0, 0], "v_km_s": [0, 29.78, 0] },
+    "moon":  { "mu_km3_s2": 4904.8695,      "radius_km": 1737.4,   "has_surface": true,  "r_km": [149984400.0, 0, 0], "v_km_s": [0, 30.802, 0] }
+  },
+
+  "target": { "name": "earth", "yield_strength_pa": 5000000.0, "beta_stop": 0.3, "k_shape": 2.0 },
+
+  "output_csv": "Data/solsys_traj.csv",
+  "output_json": "Data/solsys_impact.json"
+}

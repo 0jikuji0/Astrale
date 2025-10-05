@@ -1,0 +1,6 @@
+lancer une simulation multi corps : 
+python asteroid_sim\\simulate_multi.py config_multi.json
+
+
+Lanceer une simu simple : 
+python asteroid_sim\\simulate.py config.json
