@@ -97,7 +97,7 @@ function init() {
   controls.dampingFactor = 0.05;
 
   window.addEventListener("resize", onWindowResize);
-  window.addEventListener("click", onClick); // 🔹 écouteur pour clic sur planète
+  window.addEventListener("click", onClick);
 }
 
 /* -----------------------------------------------------
@@ -202,7 +202,7 @@ function createSolarArcs() {
 function planetRevolver(time) {
   const speedMultiplier = 0.2;
   planets.forEach((p) => {
-    const angle = time * speedMultiplier * p.speed;
+    const angle = (time * speedMultiplier * p.speed) % (2 * Math.PI);
     const b = p.a * Math.sqrt(1 - p.e * p.e);
     const x = p.a * Math.cos(angle) - p.a * p.e;
     const z = b * Math.sin(angle);
@@ -235,23 +235,25 @@ function onClick(event) {
   if (intersects.length > 0) {
     const clicked = intersects[0].object;
     if (clicked.userData.name === "Terre") {
-      window.location.href = "/Earth"; // 🔹 Redirection
+      window.location.href = "/Earth";
     }
   }
 }
 
 /* -----------------------------------------------------
-   Animation
+   Animation avec temps réel
 ------------------------------------------------------ */
-function animate(time) {
+function animate() {
   requestAnimationFrame(animate);
-  time *= 0.001;
 
-  planet_sun.rotation.y += 0.002;
-  planetRevolver(time);
+  // ⏱ Temps réel (secondes depuis 1970)
+  const now = Date.now() / 1000;
+
+  planet_sun.rotation.y = (now * 0.002) % (2 * Math.PI);
+  planetRevolver(now);
 
   arcs.forEach((arc, i) => {
-    const scale = 1 + 0.02 * Math.sin(time * 2 + i);
+    const scale = 1 + 0.02 * Math.sin(now * 2 + i);
     arc.scale.set(scale, scale, scale);
   });
 
@@ -270,4 +272,4 @@ function onWindowResize() {
 }
 
 init();
-animate(0);
+animate();
